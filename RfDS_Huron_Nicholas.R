@@ -564,3 +564,67 @@ jan1 <- filter(flights, month==1, day==1)
 
 #put the same command in () to assign to object AND still print
 (jan1 <- filter(flights, month==1, day==1))
+
+#floating point numbers make some logical statements not work
+#should be TRUE but are FALSE
+sqrt(2) ^ 2 == 2
+
+1/49 * 49 == 1
+
+#this is because computers use estimates of numbers rather than infinite continous values
+#so use near command to get there instead
+near(sqrt(2)^2, 2)
+near(1/49*49, 1)
+#these now return TRUE
+
+#logical operators
+#& is and (intersection)
+#! is not
+#| is or (union)
+#xor( ) is everything but the intersection
+
+filter(flights, month == 1 | month == 12)
+
+#fun little note: there are longer ways to do a logical operator
+filter(flights, xor(month == 1, month == 12))
+filter(flights, ((month == 1  | month == 12) & !(month == 1  & month == 12)))
+
+#this version does not do the same as the first filter function
+filter(flights, month == 11 | 12)
+#the argument goes to TRUE which numerically is 1
+
+#using the %in% function
+nov_dec <- filter(flights, month %in% c(11,12))
+
+#De Morgan's Law is referenced here
+filter(flights, !(arr_delay > 120 | dep_delay > 120))
+filter(flights, arr_delay <= 120, dep_delay <= 120)
+
+#filter only uses rows where conditions are true, you have to ask to keep FALSE's and NA's
+df <- tibble(x = c(1, NA, 3))
+filter(df, x > 1)
+#to keep NA's, call it
+filter(df, is.na(x) | x > 1)
+
+#5.2.4 exercises
+
+#1
+#.1: arrival delay >= 120 min
+filter(flights, arr_delay >= 120) #10200
+
+#.2: flew to Houston (IAH or HOU)
+filter(flights, dest %in% c("IAH", "HOU")) #9313
+
+#.3: operated by united, american, or delta
+#find the codes
+unique(flights$carrier)
+#filter
+filter(flights, carrier %in% c("AA","UA", "DL")) #139504
+
+#.4: departed in summer (July, August, September)
+filter(flights, month > 6 & month < 10) #86326
+
+#.5: arrive > 120 min late but did not depart late
+filter(flights, arr_delay > 120 & dep_delay <= 0) #29
+
+#.6: delayed >= 60 min and arrived < 30 min late
