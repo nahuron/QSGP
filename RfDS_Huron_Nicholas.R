@@ -626,5 +626,47 @@ filter(flights, month > 6 & month < 10) #86326
 
 #.5: arrive > 120 min late but did not depart late
 filter(flights, arr_delay > 120 & dep_delay <= 0) #29
+ 
+#.6: delayed >= 60 min and made up over 30 min in flight (difference in initial and final delays >30)
+filter(flights, dep_delay >= 60 & (dep_delay - arr_delay) > 30) #1844
 
-#.6: delayed >= 60 min and arrived < 30 min late
+#.7: departed between 00:00 and 06:00 inclusive ( dep_time >= 0000 and dep_time <=0600)
+filter(flights, dep_time >= 0 & dep_time <= 600)  #9344
+
+#2
+?between
+#this function is a shortcut for >= and <= together and is implemented in c++
+#you can use it to simplify code in #1.4 and 1.7
+#.4
+filter(flights, between(month, 7, 9)) #86326 matches
+#.7
+filter(flights, between(dep_time, 0, 600))  #9344 matches
+
+#3
+#how many flights are missing dep_time? what other vars are missing in these? what might these rows represent?
+(nodep <- filter(flights, is.na(dep_time)))
+
+#There are 8255 flights without dep_time values (they have NA instead). They are all missing dep_delay, arr_time, arr_delay, and air_time as well. Some also are missing tailnum.
+colnames(nodep)[colSums(is.na(nodep)) > 0]
+#together, this suggests that these flights never got off the ground but rather were cancelled.
+
+#4
+#Why os Na^0 not missing?
+NA^0
+#mathematically, any value that is raised to the power of 0 is equal to 1. Thus, even though the value is not known, the value equates to 1
+
+#Why is NA | TRUE not missing?
+NA | TRUE
+#This statement is an 'or' statement. Thus, even though NA is missing, the TRUE evaluates as TRUE. Thus, the returned values is TRUE rather than missing
+
+#Why is FALSE & NA not missing?
+FALSE & NA
+#The expression here is FALSE for results. If an expression is ambiguous and FALSE, it is altogether FALSE (same goes for FALSE & TRUE).
+
+#Can you figure out a general rule? NA*0 is a tricky counterexample.
+NA*0
+#this may be an exception because infinity and -infinity are possible values in R. A quick look online suggests that 0*Inf is undefined, which is different from 0. Thus, there may be multiple possible solutions to NA*0
+#In general, if the ambiguity of an expression containing NA can be removed to a specific certain value, R will return that as output instead of NA (missing).
+
+#5.3
+
