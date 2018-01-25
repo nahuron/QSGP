@@ -559,3 +559,8 @@ flights
 #using filter to subset the data according to values
 filter(.data = flights, month==1, day==1)
 
+#save the filtered subset in a new object
+jan1 <- filter(flights, month==1, day==1)
+
+#put the same command in () to assign to object AND still print
+(jan1 <- filter(flights, month==1, day==1))
