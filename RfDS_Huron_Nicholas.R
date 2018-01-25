@@ -556,4 +556,6 @@ flights
 
 #5.2
 
+#using filter to subset the data according to values
+filter(.data = flights, month==1, day==1)
 
