@@ -669,4 +669,47 @@ NA*0
 #In general, if the ambiguity of an expression containing NA can be removed to a specific certain value, R will return that as output instead of NA (missing).
 
 #5.3
+#changing a tibble's order via arrange()
+
+arrange(flights, year, month, day)
+
+#desc() can be used to do it in descending order
+arrange
+
+#missing values are always at the end, regardless of desc
+
+#exercises 5.3.1
+
+#1
+arrange(flights, desc(rowSums(is.na(flights)))) #thank you stackoverflow, this sorts by the number of rows with NA values for each column
+
+#2
+
+#most delayed flights for departure
+arrange(flights, desc(dep_delay))
+#most delayed flights for arrival
+arrange(flights, desc(arr_delay))
+#maybe this will sort by total net delay...
+arrange(flights, desc(dep_delay+(arr_delay - dep_delay)))
+
+#find the flights that left the earliest
+arrange(flights, dep_delay)
+
+#3
+#sort flights to find the fastest flights
+#if by fastest we want greatest avg velocity, we go with greatest distance/air_time
+arrange(flights, desc(distance/air_time))
+
+#shortest flight times would be
+arrange(flights, air_time)
+
+#4
+#flights that travel the longest
+arrange(flights, desc(distance))
+
+#flights that travel the shortest
+arrange(flights, distance)
+
+#5.4
+
 
