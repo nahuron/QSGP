@@ -711,5 +711,46 @@ arrange(flights, desc(distance))
 arrange(flights, distance)
 
 #5.4
+#using select() to get only some cols
 
+select(flights, year, month, day)
+select(flights, year:day)
+#select all cols except those from year to day
+select(flights, -(year:day))
 
+#functions that help select()
+starts_with("abc")
+ends_with("xyz")
+contains("jkl")
+matches("(.)\\1") #finds vars with regex, this one is for repeating chars
+num_range("x", 1:3) #matches x1, x2, x3
+
+#you can rename vars with select, but rename() is easier
+rename(flights, tail_num = tailnum) #oddly, it doesnt seem to show on this print the first time
+
+#manipulating with select and everything can make moving cols easier
+select(flights, time_hour, air_time, everything())
+#note: it does not copy the initially selected cols in the command above
+
+#exercises 5.4.1
+
+#1
+select(flights, dep_time, dep_delay, arr_time, arr_delay)
+select(flights, starts_with("dep_"), starts_with("arr_"))
+#i am sure there are more
+
+#2
+select(flights, dep_time, dep_time, dep_delay)
+#it appears to not add dup columns
+
+#3
+?one_of
+vars <- c("year", "month", "day", "dep_delay", "arr_delay")
+select(flights, one_of(vars))
+#one_of appears to select the columns that in an object based on a vector of col names
+
+#4
+select(flights, contains("tImE"))
+#it appears that it is not case sensitive by default. change the argument ignore.case=FALSE to be case sensitive
+
+#5.5
