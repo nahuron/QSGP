@@ -754,3 +754,104 @@ select(flights, contains("tImE"))
 #it appears that it is not case sensitive by default. change the argument ignore.case=FALSE to be case sensitive
 
 #5.5
+#mutate() and adding new vars
+
+#7 cols
+(flights_sml <- select(flights, year:day, ends_with("delay"), distance, air_time))
+
+#adds two cols
+mutate(flights_sml, gain = arr_delay - dep_delay, speed = distance / air_time * 60)
+
+#you can do the same command, but as you create vars, you can create an additional col with them
+mutate(flights_sml, gain = arr_delay - dep_delay, hours = air_time / 60, gain_per_hour = gain / hours)
+
+#transmute can be used to only keep the new vars
+transmute(flights, gain = arr_delay - dep_delay, hours = air_time / 60, gain_per_hour = gain / hours)
+
+#modular maths: using remainders %% and integer division %/%
+transmute(flights, dep_time, hour = dep_time %/% 100, minute = dep_time %% 100)
+
+#using leading and lagging commands lead() and lag()
+x <- 1:10
+lag(x)  #first value is changed to NA and sequence begins, ending without 10
+lead(x) #last value is changed to NA and sequence is the same except no 1 (value in x[1]==2)
+
+#cumulative and rolling aggregates
+cumsum(x) #adds values as you go along a vector
+#also have: cumprod(), cummin(), cummax(), and dplyr::cummean()
+
+#ranking is something else that can be used
+y <- c(1, 2, 2, NA, 3, 4)
+min_rank(y)
+min_rank(desc(y)) #note RE:desc(): values are transformed (in this case, *-1) to get descending order
+
+#some alternatives to min_rank
+row_number(y)   #no ties
+dense_rank(y)   #ties, but does not skip numbers
+percent_rank(y) #values between 0-1 by rescaling min_rank
+cume_dist(y)    #cum distr function, all values less than or equal to current rang
+ntile(y, n = 2) #uses quantiles (n) to bin rankings
+
+#exercises 5.5.2
+
+#1
+#convert dep_time and sched_dep_time from numeric representation of time to min since midnight
+transmute(flights,
+          dep_time,
+          minutes = ((dep_time %/% 100)*60)+(dep_time %% 100), 
+          sched_dep_time, 
+          sched_minutes =  ((sched_dep_time %/% 100)*60)+(sched_dep_time %% 100)
+          )
+
+#2
+#expect to see a difference between air_time and the difference in arr and dep times, since they are not in minutes and air_time is. Furthermore, they may include different time zones, which leads to incorrect  calculations
+select(flights, air_time, arr_time, dep_time)
+#try the function comparing them
+transmute(flights,
+          air_time, 
+          (arr_time - dep_time)
+          )
+#yup, they do not match
+#to fix it (somewhat), let's convert the two latter times to minutes as new vars and then do the maths
+transmute(flights, 
+          origin,
+          dep_time, 
+          dep_minutes = (((dep_time %/% 100)*60)+(dep_time %% 100)), 
+          dest,
+          arr_time, 
+          arr_minutes = (((arr_time %/% 100)*60)+(arr_time %% 100)), 
+          air_time,
+          (arr_minutes - dep_minutes)
+          )
+#however, we still have not accounted for differences in time zones =/
+
+#3
+#compare dep_time, sched_dep_time, and dep_delay
+select(flights, dep_time, sched_dep_time, dep_delay)
+#dep_time - sched_dep_time should == dep_delay, except where days transition for time
+#to show this:
+transmute(flights, dep_time, sched_dep_time, dep_delay, dep_delay_check = ((((dep_time %/% 100)*60)+(dep_time %% 100)) - (((sched_dep_time %/% 100)*60)+(sched_dep_time %% 100))))
+#we can see that the first ten entries seem to check out
+#however, if we sort by dep_delay with desc()
+arrange(transmute(flights, dep_time, sched_dep_time, dep_delay, dep_delay_check = ((((dep_time %/% 100)*60)+(dep_time %% 100)) - (((sched_dep_time %/% 100)*60)+(sched_dep_time %% 100)))), desc(dep_delay))
+#still not matching up for all of these, you can see from the first entry that this is because of not accounting for changing of dates
+
+#4
+#find 10 most delayed flights via ranking function, use row_number() to skip ties
+arrange((mutate(flights, dep_delay_rank = row_number(desc(dep_delay)))), dep_delay_rank, dep_delay)
+#displays the top 10 most delayed flights
+
+#5
+1:3 + 1:10
+#This retuns the sequence below
+#[1]  2  4  6  5  7  9  8 10 12 11
+#Warning message:
+#  In 1:3 + 1:10 :
+#  longer object length is not a multiple of shorter object length
+#Since the two sequences are not of the same length, the shorter is repeated until the longer has been completed for the task, this is why the last number is 11 (repeats to the start of the first sequence, so 1+10=11)
+
+#6
+#trig functions in R?
+#normal trig functions: sin, cos, tan
+#these have analogues that assume you are multiplying the interior by pi: sinpi, cospi, tanpi
+#arc trig functions: acos, asin, atan, and the "two argument arc tangent": atan2
