@@ -33,10 +33,8 @@ aqua <- aqua.invasives %>% count(state_scientific_name, sort = T) %>% .[1:25,]
 #store in a new object
 aqua.invasives.top <- aqua.invasives %>% filter(state_scientific_name %in% aqua$state_scientific_name)
 
-#summary of counts
-aqua.summary <- aqua.invasives.top  %>% count(state_scientific_name, sort = T)
-#reorder for plotting
-aqua.summary$state_scientific_name <- factor(aqua.summary$state_scientific_name, levels = aqua.summary$state_scientific_name[order(-aqua.summary$n)])
+#reorder the summary object aqua for plotting
+aqua$state_scientific_name <- factor(aqua$state_scientific_name, levels = aqua$state_scientific_name[order(-aqua$n)])
 
 #plot relative proportional number of records for the top 25 species (version with counts)
 ggplot(data = aqua.invasives.top) +
@@ -45,7 +43,7 @@ ggplot(data = aqua.invasives.top) +
   labs(y = "Proportion of Observations", x = "Invasive Species", title = "Proportional Prevalance Among the Top Twenty-Five \nMost Sighted Invasive Aquatic Species in PA")
 
 #version with summary table instead (minus sign is missing in reorder to do descending order)
-ggplot(data = aqua.summary) +
+ggplot(data = aqua) +
   geom_bar(mapping = aes(x = reorder(state_scientific_name, n), y = (n/sum(n)), fill = factor(..x..)), stat = "identity", show.legend=FALSE) +
   coord_flip() +
   labs(y = "Proportion of Observations", x = "Invasive Species", title = "Proportional Prevalance Among the Top Twenty-Five \nMost Sighted Invasive Aquatic Species in PA")
@@ -60,7 +58,7 @@ invasives.co <- invasives %>% count(County, sort=T)
 invasives.sc <- invasives %>% count(state_scientific_name, sort = T)
 invasives.na <- invasives %>% count(natlhabitat, sort=T)
 
-invasives$County <- factor(invasives$County, levels = invasives$County[order(invasives$County)])
+invasives$County <- factor(invasives$County, levels = unique(invasives$County[order(invasives$County)]))
 
 ggplot(data = invasives) +
   geom_bar(mapping = aes(x = reorder(County, table(County)[County]), group = factor(0), fill= factor(..x..)), show.legend = FALSE) +

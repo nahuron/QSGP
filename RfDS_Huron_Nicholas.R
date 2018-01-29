@@ -855,3 +855,239 @@ arrange((mutate(flights, dep_delay_rank = row_number(desc(dep_delay)))), dep_del
 #normal trig functions: sin, cos, tan
 #these have analogues that assume you are multiplying the interior by pi: sinpi, cospi, tanpi
 #arc trig functions: acos, asin, atan, and the "two argument arc tangent": atan2
+
+#5.6
+#summarise() as a way to group summaries
+
+summarise(flights, delay = mean(dep_delay, na.rm = TRUE))
+
+#gets more useful with the group_by() function
+(by_day <- group_by(flights, year, month, day))
+summarise(by_day, delay = mean(dep_delay, na.rm = TRUE))
+#we now have a summary for each day of the average delay across all flights then
+
+#using the pipe to combine multiple operations... ooooooo
+(by_dest <- group_by(flights, dest))
+(delay <- summarise(by_dest,
+                   count = n(),
+                   dist = mean(distance, na.rm = TRUE),
+                   delay = mean(arr_delay, na.rm = TRUE)
+))
+(delay <- filter(delay, count > 20, dest != "HNL"))
+
+#graph the data!
+ggplot(data = delay, mapping = aes(x = dist, y = delay)) +
+  geom_point(aes(size = count), alpha = 1/3) +
+  geom_smooth(se = FALSE)
+
+#the above code is a pain, we have to name intermediate objects, gets time consuming
+#with the pipe (%>%) we do not have to! THINK OF THE PIPE AS "THEN" IN CODE
+
+delays <- flights %>% 
+  group_by(dest) %>% 
+  summarise(
+    count = n(),
+    dist = mean(distance, na.rm = TRUE),
+    delay = mean(arr_delay, na.rm = TRUE)
+  ) %>% 
+  filter(count > 20, dest != "HNL")
+
+#using NA removal functions
+not_cancelled <- flights %>% 
+  filter(!is.na(dep_delay), !is.na(arr_delay))
+
+not_cancelled %>% 
+  group_by(year, month, day) %>% 
+  summarise(mean = mean(dep_delay))
+
+#using counts and counts of non-NA's
+delays <- not_cancelled %>%
+  group_by(tailnum) %>%
+  summarise(delay = mean(arr_delay))
+
+ggplot(data = delays,
+       mapping = aes(x = delay)) +
+geom_freqpoly(binwidth = 10)
+
+#flights vs average delay
+delays <- not_cancelled %>% 
+  group_by(tailnum) %>% 
+  summarise(
+    delay = mean(arr_delay, na.rm = TRUE),
+    n = n()
+  )
+
+ggplot(data = delays, 
+       mapping = aes(x = n, y = delay)) +
+  geom_point(alpha = 1/10)
+
+#filtering out small sample groups and plot in the %>% and + approach
+delays %>%
+  filter(n >50) %>%
+  ggplot(mapping = aes(x = n, y = delay)) +
+  geom_point(alpha = 1/10)
+
+#use command + shift + p to resend a previous block of code! so convenient!
+
+#now to do it again with the Lahman package
+install.packages("Lahman", dependencies = T)
+library(tidyverse)
+library(Lahman)
+
+#gather data and organize to compare batters BA and # at bats (AB)
+batting <- as_tibble(Lahman::Batting)
+
+batters <- batting %>%
+  group_by(playerID) %>%
+  summarise(
+    ba = sum(H, na.rm=T) / sum(AB, na.rm=T),
+    ab = sum(AB, na.rm=T)
+  )
+
+#now let's pipe it to get it plotted
+batters %>%
+  filter(ab > 100)  %>%
+  ggplot(mapping = aes(x = ab, y = ba)) +
+  geom_point() +
+  geom_smooth(se = F)
+
+#arrange dataset by ba in descending order
+batters %>% arrange(desc(ba))
+#players with great BA seem lucky!!!
+
+#some other summary functions
+
+#measures of central location
+not_cancelled %>%
+  group_by(year, month, day) %>%
+  summarise(
+    avg_delay1 = mean(arr_delay),
+    avg_delay2 = mean(arr_delay[arr_delay > 0]) #average of actual delays
+  )
+#median() is also an option
+
+#measure of spread
+#sd()
+#IQR()
+#mad()
+
+not_cancelled %>%
+  group_by(dest) %>%
+  summarise(distance_sd = sd(distance)) %>%
+  arrange(desc(distance_sd))
+
+#measure of rank
+#min()
+#max()
+#quantile(x, 0.25)
+
+not_cancelled %>%
+  group_by(year, month, day) %>%
+  summarise(
+    first = min(dep_time),
+    last = max(dep_time)
+  )
+
+#measures of position
+#first()
+#last()
+#nth(x, 1) this is the first
+
+not_cancelled %>%
+  group_by(year, month, day) %>%
+  summarise(
+    first_dep = first(dep_time),
+    last_dep = last(dep_time)
+  )
+
+#can use ranking with filtering by range to get the min and max values for each date
+not_cancelled %>% 
+  group_by(year, month, day) %>% 
+  mutate(r = min_rank(desc(dep_time))) %>% 
+  filter(r %in% range(r))
+
+#you can also count different values
+#n() for size of a current group
+#sum(!is.na(x)) for all non-NA values
+#n_distinct(x) for all unique values --> how is this different from the unique() command?
+
+
+# Which destinations have the most carriers?
+not_cancelled %>% 
+  group_by(dest) %>% 
+  summarise(carriers = n_distinct(carrier)) %>% 
+  arrange(desc(carriers))
+
+#dplyr has a counts function to make finding counts easier!
+not_cancelled %>%
+  count(dest)
+#counts can be weighted too, this one gets the total miles a plane flew
+not_cancelled %>%
+  count(tailnum, wt = distance)
+
+#can count number of logical values, TRUE is 1 and FALSE is 0
+# How many flights left before 5am? (these usually indicate delayed
+# flights from the previous day)
+
+not_cancelled %>%
+  group_by(year, month, day) %>%
+  summarise(n_early = sum(dep_time < 500))
+
+# What proportion of flights are delayed by more than an hour?
+not_cancelled %>% 
+  group_by(year, month, day) %>%
+  summarise(hour_perc = mean(arr_delay > 60))
+
+#grouping by multiple vars (progressively)
+daily <- group_by(flights, year, month, day)
+(per_day   <- summarise(daily, flights = n()))
+(per_month <- summarise(per_day, flights = sum(flights)))
+(per_year  <- summarise(per_month, flights = sum(flights)))
+
+#ungroup() can be used to ungroup data
+daily %>%
+  ungroup %>%
+  summarise(flights = n())
+
+#exercises 5.6.7
+
+#1
+#Brainstorm at least 5 different ways to assess the typical delay characteristics of a group of flights. Consider the following scenarios:
+#A flight is 15 minutes early 50% of the time, and 15 minutes late 50% of the time.
+#A flight is always 10 minutes late.
+#A flight is 30 minutes early 50% of the time, and 30 minutes late 50% of the time.
+#99% of the time a flight is on time. 1% of the time it’s 2 hours late.
+
+#Which is more important: arrival delay or departure delay?
+
+#2
+#find alternative to code without using count()
+not_cancelled %>% count(dest)
+
+#alternative without count
+not_cancelled %>%
+  group_by(dest) %>%
+  summarise(n())
+
+not_cancelled %>% count(tailnum, wt = distance)
+
+#alternative without count
+not_cancelled %>%
+  group_by(tailnum) %>%
+  summarise(sum(distance))
+
+#3
+#the definition: (is.na(dep_delay) | is.na(arr_delay) )  for canceled flights is suboptimal. why? Which col is more important?
+
+#using NA removal functions
+not_cancelled <- flights %>% 
+  filter(!is.na(dep_delay), !is.na(arr_delay))
+
+#if we take the original function above and remove the ! from the arr_delay query, we can see that there are a number of flights that contain a departure delay 
+#but have NA for the arrival delay but have an actual arrival time and scheduled arrival time. While they do not have air time values either, this suggests that
+#some flights may have not been cancelled (perhaps redirected)? With this in mind, it seems like !is.na(dep_delay) is more important.
+not_cancelled <- flights %>% 
+  filter(!is.na(dep_delay), is.na(arr_delay))
+View(not_cancelled)
+
+#4
