@@ -1243,10 +1243,64 @@ flights %>%
 
 #4
 #For each destination, compute the total minutes of delay. 
-flights %>%
+View(flights %>%
   group_by(dest) %>%
   filter(!is.na(dep_delay)) %>%
-  summarise(total_delay = sum(dep_delay)) #ATL has a ton of delays... I can confirm that this is true after spending a night sleeping there after ~3 weeks of fieldwork
+  summarise(total_delay = sum(dep_delay))) #ATL has a ton of delays... I can confirm that this is true after spending a night sleeping there after ~3 weeks of fieldwork
 
 #For each, flight, compute the proportion of the total delay for its destination.
+View(flights %>%
+  group_by(dest) %>%
+  filter(!is.na(dep_delay)) %>%
+  mutate(total_delay = sum(dep_delay)) %>%
+    group_by(flight) %>%
+    mutate(prop_delay = dep_delay/total_delay))
 
+#5
+#Using lag() explore how the delay of a flight is related to the delay of the immediately preceding flight.
+flights %>%
+  group_by(year, month, day, sched_dep_time) %>%
+  arrange(origin) %>%
+  group_by(origin) %>%
+  filter(!is.na(dep_delay)) %>%
+  mutate(previous_flight = lag(dep_delay, n = 1)) %>%
+  filter(!is.na(previous_flight)) %>%
+ggplot() +
+  geom_point(mapping = aes(x = dep_delay, y = previous_flight), position = "jitter", show.legend = F, size = 0.75) +
+  geom_smooth(mapping = aes(x = dep_delay, y = previous_flight), se = F, method = "lm")
+#does not look like there is a crazy relationship, but it is positive...
+  
+#6
+  #look at destinations for flights that are suspiciously fast
+#Compute the air time a flight relative to the shortest flight to that destination. Which flights were most delayed in the air?
+flights %>%
+  filter(!is.na(air_time)) %>%
+  group_by(dest, origin) %>%
+  arrange(air_time) %>%
+  summarise(mean(air_time), min(air_time))
+#now compare individual flights
+flights %>%
+  filter(!is.na(air_time)) %>%
+  group_by(dest, origin) %>%
+  arrange(air_time) %>%
+  mutate(quickest = min(air_time), quick_diff = air_time - quickest, mean_air = mean(air_time)) %>%
+  arrange(desc(quick_diff))
+
+#7
+#Find all destinations that are flown by at least two carriers. Use that information to rank the carriers.
+  flights %>%
+  group_by(dest) %>%
+  filter(!is.na(dep_delay)) %>%
+  filter(n_distinct(carrier) > 1) %>%
+  group_by(carrier) %>%
+  summarise(n_dest = n_distinct(dest)) %>%
+  mutate(carrier_rank = min_rank(desc(n_dest)))
+
+#8
+#For each plane, count the number of flights before the first delay of greater than 1 hour.
+flights %>%
+  group_by(tailnum) %>%
+  arrange(year, month, day) %>%   #cannot group by date but can arrange by it
+  filter(!cumany(dep_delay >60)) %>%  #found cumany() on a google search. this command looks for the first instance of a particular set of criteria and returns true thereafter... using a ! gives us a filter of everything before that
+  summarise(flights_prior = n()) %>%
+  arrange(desc(flights_prior))
