@@ -410,12 +410,17 @@ ggplot(data = mpg, mapping = aes(x = cty, y = hwy)) +
 #pretty cool alt to geom_jitter
 
 #4
+#What’s the default position adjustment for geom_boxplot()? Create a visualisation of the mpg dataset that demonstrates it.
+#default aggregated data
 ggplot(data = mpg) +
   geom_boxplot(mapping = aes(x = class, y = cty))
+
 #vs.
+#data partitioned by drv
 ggplot(data = mpg) +
   geom_boxplot(mapping = aes(x = class, y = cty, fill = drv))
 #the default position for geom_boxplot is dodge! sweet
+#This is also in the documentation for geom_boxplot()
 
 #3.9
 
