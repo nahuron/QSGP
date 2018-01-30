@@ -1242,3 +1242,11 @@ flights %>%
 #sure seems like 1900 is a pretty terrible time to fly, but the same goes for all evening times
 
 #4
+#For each destination, compute the total minutes of delay. 
+flights %>%
+  group_by(dest) %>%
+  filter(!is.na(dep_delay)) %>%
+  summarise(total_delay = sum(dep_delay)) #ATL has a ton of delays... I can confirm that this is true after spending a night sleeping there after ~3 weeks of fieldwork
+
+#For each, flight, compute the proportion of the total delay for its destination.
+
