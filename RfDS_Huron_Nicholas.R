@@ -1,6 +1,7 @@
 #Nick Huron
 #R: Quantitative Science to Solve Global Problems
-#RfDS_Huron_Nicholas_v3_0.R
+#RfDS_Huron_Nicholas.R
+#also available at Github: https://github.com/nahuron
 
 ####################################################################################################
 #chapter 3

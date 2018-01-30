@@ -1,3 +1,8 @@
+#file header
+#date
+#title
+#purpose
+#authors
 #assignment for class
 
 #required packages
