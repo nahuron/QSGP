@@ -1058,7 +1058,35 @@ daily %>%
 #A flight is 30 minutes early 50% of the time, and 30 minutes late 50% of the time.
 #99% of the time a flight is on time. 1% of the time it’s 2 hours late.
 
+#if we are assuming the EXACT amount of time late or early:
+
+delays <- flights %>%
+  group_by(flight) %>%
+  summarise(per_flight_num = n(), 
+            early15 = mean(dep_delay == -15, na.rm = T),
+            late15 = mean(dep_delay == 15, na.rm = T),
+            always10late = mean(dep_delay == 10, na.rm = T),
+            early30 = mean(dep_delay == -30, na.rm = T),
+            late30 = mean(dep_delay == 30, na.rm = T),
+            ontime99 = mean(dep_delay == 0, na.rm = T),
+            twohourslate = mean(dep_delay == 120, na.rm = T)
+            )
+#A flight is 15 minutes early 50% of the time, and 15 minutes late 50% of the time.
+delays %>%
+  filter(early15 == 0.5, late15 == 0.5) #never the case
+#A flight is always 10 minutes late.
+delays %>%
+  filter(always10late == 1.0) #5 instances
+#A flight is 30 minutes early 50% of the time, and 30 minutes late 50% of the time.
+delays %>%
+  filter(early30 == 0.5, late30 == 0.5) #never the case
+#99% of the time a flight is on time. 1% of the time it’s 2 hours late.
+delays %>%
+  filter(ontime99 == 0.99, twohourslate == 0.01)  #never the case
+
 #Which is more important: arrival delay or departure delay?
+#This depends on the question. Since there are some flights with wonky arrival delay data, I may stick with departure. 
+#Additionally, departure may be a decent indicator of how smoothly everything is running, assuming expected stable/consistent flight times.
 
 #2
 #find alternative to code without using count()
@@ -1091,3 +1119,77 @@ not_cancelled <- flights %>%
 View(not_cancelled)
 
 #4
+#get summary table of number of cancelled flights per day
+(cancel <- flights %>%
+  group_by(year, month, day) %>%
+  filter(is.na(dep_delay)) %>%
+  summarise(n_cancelled = n()))
+
+#find relative number of cancelled flights per day (prop of flights) and mean delay
+(all_flights <- flights %>%
+    group_by(year, month, day) %>%
+    summarise(prop_cancelled = sum(is.na(dep_delay))/n(), n_cancelled = sum(is.na(dep_delay)), n_flights = n(), mean_delay = mean(dep_delay, na.rm =T)))
+  
+#plot prop cancelled v mean delay
+ggplot(data = all_flights) +
+  geom_point(mapping = aes(x = prop_cancelled, y = mean_delay))
+#it sure seems like a positive relationship exists between mean delay and proportion of cancelled flights!
+
+#5
+#which carrier has the worst delays?
+carriers <- flights %>%
+  group_by(carrier) %>%
+  summarise(mean_dep_delay = mean(dep_delay, na.rm = T), mean_arr_delay = mean(arr_delay, na.rm = T))
+
+#plot
+ggplot(data = carriers, mapping = aes(x = carrier)) +
+  geom_bar(mapping = aes(y= mean_dep_delay), stat = "identity")
+ggplot(data = carriers, mapping = aes(x = carrier)) +
+  geom_bar(mapping = aes(y= mean_arr_delay), stat = "identity")
+#seems like F9 has the worst delays on average for both arr and dep
+
+#Challenge: can you disentangle the effects of bad airports vs. bad carriers? Why/why not? (Hint: think about flights %>% group_by(carrier, dest) %>% summarise(n()))
+delays <- flights %>% 
+  group_by(carrier, dest) %>% 
+  summarise(mean_dep_delay = mean(dep_delay, na.rm = T)) %>% 
+  group_by(carrier) %>% 
+  summarise(SD = sd(mean_dep_delay, na.rm = T), M = mean(mean_dep_delay, na.rm = T))
+#we can see the means and SD by dest here, so we can kind of get the picture...
+
+#while it may be possible to potentially get at the dest biases, there is great disparity of flights to airports. Some airlines only go to 1 or 2 destinations, such as F9
+#this can be deconstructed
+carriers_dest <- flights %>%
+  group_by(carrier, dest) %>%
+  filter(!is.na(dep_delay) & dep_delay > 0)
+#look at dest and carriers
+ggplot(data = carriers_dest) +
+  geom_bar(mapping = aes(x = carrier, fill = dest), position = "dodge", show.legend = F)
+
+#6
+?count
+#the sort=TRUE argument in count() sorts the output in descending order. This can make it easy to see which groupings have the most observations! Determining the top x groups would be easier with this function/argument
+
+#5.7
+
+#convenient options for mutate and filter
+flights_sml %>% 
+  group_by(year, month, day) %>%
+  filter(rank(desc(arr_delay)) < 10)
+#this uses the rank function to find the 10 worst instances for the grouping
+
+#find observations over a certain amount
+(popular_dests <- flights %>% 
+  group_by(dest) %>% 
+  filter(n() > 365))
+#can continue with this dataset to find summary data of delays by dest and date
+popular_dests %>% 
+  filter(arr_delay > 0) %>% 
+  mutate(prop_delay = arr_delay / sum(arr_delay)) %>% 
+  select(year:day, dest, arr_delay, prop_delay)
+
+#generally avoid a grouped mutate followed by an ungrouped filter, they are hard to make sure you did them correctly
+#visit the vignette("window-functions") sometime
+
+#exercises 5.7.1
+
+#1
