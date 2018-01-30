@@ -1193,3 +1193,52 @@ popular_dests %>%
 #exercises 5.7.1
 
 #1
+#mutate and filter "helpful" functions
+#lag, lead      #lead or lag is applied to the last/first value for each particular group
+View(flights %>%
+  group_by(carrier) %>%
+  mutate(dep_delay_2 = lag(dep_delay, n = 1)) %>%
+  filter(carrier == "AA"))
+#cumsum, cumprod, cummin, cummax, cummeans    #again the function is applied by group
+View(flights %>%
+       group_by(carrier) %>%
+       mutate(dep_delay_2 = cumsum(air_time)) %>%
+       filter(carrier == "UA"))
+#min_rank, row_number, dense_rank, percent_rank, cume_dist, ntile   #see previous entries
+View(flights %>%
+       group_by(carrier) %>%
+       mutate(dep_delay_2 = min_rank(air_time)) %>%
+       filter(carrier == "UA"))
+#rank, desc   #see above entry
+View(flights %>%
+       group_by(carrier) %>%
+       mutate(dep_delay_2 = rank(air_time)) %>%
+       filter(carrier == "UA"))
+#desc just makes everything *-1 for a numeric col
+#n      #this now tells you the total n of observations for the group, repeated for each entry with mutate
+View(flights %>%
+       group_by(carrier) %>%
+       mutate(dep_delay_2 = n()) %>%
+       filter(carrier == "UA"))
+
+
+#2
+#Which plane (tailnum) has the worst on-time record?
+
+flights %>%
+  group_by(tailnum) %>%
+  mutate(mean_dep = mean(dep_delay, na.rm = T)) %>%
+  select(tailnum, mean_dep) %>%
+  arrange(desc(mean_dep))
+#N844MH has the worst average departure delay
+
+#3
+flights %>%
+  group_by(hour) %>%
+  filter(!is.na(dep_delay) & dep_delay > 0) %>%
+  summarise(worst_time = mean(dep_delay, na.rm = T)) %>%
+  ggplot() +
+  geom_bar(mapping = aes(x = hour, y = worst_time), stat = "identity")
+#sure seems like 1900 is a pretty terrible time to fly, but the same goes for all evening times
+
+#4
