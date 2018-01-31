@@ -6,14 +6,14 @@
 library(tidyverse)
 #Loads packages needed
 #----------------------------------------------------------------------------------------------
-#Part 1
+##Assignment 2B Part 1
 ####################################################################################################
 ##Make a barchart of the proportional number of records for each species name. 
 #Make this figure neat, clean and titled. Use aesthetics that are unique. 
 #Note, I do not require you to plot all the species if you cannot get a good figure with so many species. 
 #Hint: Use your title to explain what you are plotting.
 ####################################################################################################
-
+#need to do one per member
 #Sort data
 
 #Top 50 invasives
@@ -39,7 +39,7 @@ ggplot(data = invasives50) +
   labs(y = "Proportion of Observations", x = "Invasive Species", title = "Proportional Prevalance Among the Top Fifty \nMost Observed Invasive Species in PA") +
   theme(axis.text.y = element_text(size = 10, face = "italic"))
 #----------------------------------------------------------------------------------------------
-#Part 2
+#Assignment 2B Part 2
 ####################################################################################################
 ##In a single plot (facets are encouraged), summarize the relationship between two or more variables of your choosing. 
 #Use color, shape changes or other techniques you learned in Chapter 3. 
@@ -54,5 +54,13 @@ h_vert <- Data1 %>%
   group_by(`data status name`, County) %>%
   summarise(observations =n()) %>%
   arrange(desc(observations))
+
+#change the name of the first column to not include spaces
+colnames(h_vert)[1] <- "data_status_name"
 #----------------------------------------------------------------------------------------------
 #plot the data as a faceted figure by data status name with bar charts of counts per county
+
+ggplot(data = h_vert) +
+  geom_bar(mapping = aes(x = County, y = observations), stat="identity") +
+  coord_flip() +
+  facet_wrap(~data_status_name)
