@@ -1284,13 +1284,17 @@ flights %>%
   group_by(dest, origin) %>%
   arrange(air_time) %>%
   summarise(mean(air_time), min(air_time))
-#now compare individual flights
+#now compare individual flights to the mean air times
 flights %>%
   filter(!is.na(air_time)) %>%
   group_by(dest, origin) %>%
   arrange(air_time) %>%
   mutate(quickest = min(air_time), quick_diff = air_time - quickest, mean_air = mean(air_time)) %>%
-  arrange(desc(quick_diff))
+  arrange(desc(quick_diff)) %>%
+  group_by(dest, origin, mean_air) %>%
+  summarise(q_flight = quantile(quickest, 0.01)) %>%
+  arrange(desc(mean_air - q_flight))
+#now we have a tibble with the most "questionable" air times at the top
 
 #7
 #Find all destinations that are flown by at least two carriers. Use that information to rank the carriers.
