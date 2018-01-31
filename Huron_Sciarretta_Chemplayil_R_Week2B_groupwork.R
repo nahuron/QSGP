@@ -13,7 +13,7 @@ library(tidyverse)
 #Note, I do not require you to plot all the species if you cannot get a good figure with so many species. 
 #Hint: Use your title to explain what you are plotting.
 ####################################################################################################
-#need to do one per member
+
 #Sort data
 
 #Top 50 invasives
