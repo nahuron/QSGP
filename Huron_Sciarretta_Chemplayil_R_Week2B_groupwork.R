@@ -86,9 +86,9 @@ ggplot(data = aqua) +
 #subset the data
 
 #subset by one of the most invasive species to see more about confirmed observations by county (Lisa)
-#create summary table for H. verticillata
+#create summary table for H. verticillata, remove NA values in county
 h_vert <- Data1 %>%
-  filter(state_scientific_name == "Hydrilla verticillata") %>%
+  filter(state_scientific_name == "Hydrilla verticillata" & !is.na(County)) %>%
   group_by(`data status name`, County) %>%
   summarise(observations =n()) %>%
   arrange(desc(observations))
@@ -98,6 +98,8 @@ colnames(h_vert)[1] <- "data.status.name"
 #view the data by county and facet by species ID method (Nicolina)
 #need to remove NA values for ID method
 methods <- Data1 %>% filter(!is.na(obsspeciesidmethod))
+#and for county too
+county_methods <- methods %>% filter(!is.na(obscountyname))
 
 #another plot will look at county and aquatic vs terrestrial species (Nick)
 #no subset is required other than to remove NA data for counties
@@ -119,7 +121,7 @@ facetplot1<-ggplot(data = h_vert) +
 facetplot1+coord_flip()
 
 #county and facet by ID method (Nicolina)
-ggplot(data = methods) +
+ggplot(data = county_methods) +
   geom_bar(mapping = aes(x = County, group = factor(0), fill= factor(..x..)), show.legend = FALSE) +
   coord_flip() +
   facet_wrap(~obsspeciesidmethod, nrow = 1) +
