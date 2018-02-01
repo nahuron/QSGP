@@ -63,7 +63,7 @@ invasives.co <- invasives %>% count(County, sort=T)
 invasives.sc <- invasives %>% count(state_scientific_name, sort = T)
 invasives.na <- invasives %>% count(natlhabitat, sort=T)
 
-invasives$County <- factor(invasives$County, levels = unique(invasives$County[order(invasives$County)]))
+invasives$County <- factor(invasives$County, levels = unique(invasives$County[order(invasives$County, decreasing = T)]))
 
 ggplot(data = invasives) +
   geom_bar(mapping = aes(x = reorder(County, table(County)[County]), group = factor(0), fill= factor(..x..)), show.legend = FALSE) +
@@ -76,5 +76,3 @@ ggplot(data = invasives) +
   coord_flip() +
   facet_wrap(~natlhabitat) +
   labs(y = "Invasive Species Observations", x = "County (Pennsylvania)", title ="Aquatic and Terrestrial Invasive Species Sightings by County")
-
-
