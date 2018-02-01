@@ -1314,3 +1314,20 @@ flights %>%
   filter(!cumany(dep_delay >60)) %>%  #found cumany() on a google search. this command looks for the first instance of a particular set of criteria and returns true thereafter... using a ! gives us a filter of everything before that
   summarise(flights_prior = n()) %>%
   arrange(desc(flights_prior))
+
+####################################################################################################
+#chapter 27
+####################################################################################################
+
+#27.1
+
+#R Markdown is for collaboration, communication, and as a modern day lab notebook
+
+#? will not help much with markdown
+#instead use R markdown cheatsheet and reference guide
+
+#make sure to have rmarkdown package!
+
+#27.2
+
+
