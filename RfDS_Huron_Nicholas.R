@@ -1315,6 +1315,8 @@ flights %>%
   summarise(flights_prior = n()) %>%
   arrange(desc(flights_prior))
 
+#in theory, this could be accomplished with ranking and filtering too!
+
 ####################################################################################################
 #chapter 27
 ####################################################################################################
@@ -1330,4 +1332,48 @@ flights %>%
 
 #27.2
 
+#R markdown has extension .rmd
+
+#RMD has 3 types of content
+#1. optional YAML header surrounded by ---
+#2. chunks of R code surrounded by '''
+#3. text mixed with simple text formatting
+
+#when opening an RMD, can run code chunks
+#can also use knit to do a complete report (cmd + shift + k)
+#can also do rmarkdown::render("filename.rmd") as well
+#knitting uses knitr to show code, output, and rest of RMD
+
+#exercises 27.2.1
+
+#1
+
+#play around with RMD instructions in an R notebook and running included intro code, with some modifications
+#some notes: running with command + return is trickier
+#using command + option + ` will run the next chunk
+#adding shift to the usual run code command will run the current chunk
+# command + option + p will run all chunks above the current position
+#`` will recognize the inside as code
+#command + option + I will get you a new code chunk
+#can run preview, just like knitr command, though it uses the last code executed to show output
+
+#2
+
+#knitting my modifications to the original RMD example code
+#file is called test.Rmd
+
+#3
+
+#Some differences between markdown and notebook:
+
+#Notebook can conveniently hide or show code chunks. RMD does not. They have slightly different save files: .nb.html and .html
+#For the most part, they contain similar content (the three main types of content: code/output, text, and header)
+#The headers seem compatible!
+
+#4
+#Markdown in a PDF uses a slightly different format. There are no boxes around output, the boxes for input are subdued in contrast (not for snippets embedded in non-code text),
+#and a serif font is used for non-code text. Links are not colored blue. Colors of input text are coded similarly to in Rstudio, albeit with a different palette.
+#For word (.docx), a single box surrounds input/output code that is subtly shaded grey (little snippets in non-code text are not bordered). Non-code text is serifed for body text and
+#sans serif for section titles, which are also colored various shades of blue. Links are also coded blue, as in html. Input text color is the same as pdf format.
+#Note: HTML resembles word, but with less coloration of text and contains specific input and output colored boxes.
 
