@@ -1,0 +1,133 @@
+---
+#title: "Nicholas_A_Huron_CV"
+#author: "Nicholas A. Huron"
+#date: 2018-02-05
+output:
+  pdf_document: default
+  word_document: default
+  html_document: default
+---
+
+#__Nicholas A. Huron__
+##Doctoral Student
+Department of Biology, Temple University \newline
+(484) 554-1530 [nahuron@temple.edu](mailto:nahuron@temple.edu) [nicholashuron.com](http://nicholashuron.com)
+
+###Education
+**2021**  
+Ph.D. in Biology (Anticipated) \newline
+Temple University \newline
+Advisor: Dr. Matthew Helmus
+
+**2013**  
+B.S. in Biology  \newline
+Pepperdine University  \newline
+Magna Cum Laude
+
+###Academic Positions
+**2017--**
+_Graduate Student, Integrative Ecology Lab_
+  
+  - Thesis: TBD
+  - Study of biodiversity and ecology of the Caribbean, especially of herpetofauna
+  
+**2014--2017** 
+_Research Assistant, Cameron Siler Lab_
+
+  - Study of the biodiversity and systematics of Philippine herpetofauna
+  - Specimen/tissue curation for research in the Sam Noble Oklahoma Museum of Natural History (SNOMNH)
+  
+**2017--2017** 
+_Research Assistant: “Tracking the Emergence of Infectious Disease Among Amphibian Species of Greatest Conservation Need—Amphibian Surveys of Wildlife Management Areas in Oklahoma to Determine Current Distribution, Status, and Health of Native Communities”, Oklahoma Department of Wildlife Conservation_
+
+  - Lead expeditions to collect data for amphibians throughout Oklahoma
+  - Subsample and prepare tissues for infectious disease screening
+  - Curate and catalogue vouchered specimens in SNOMNH
+  
+**2015--2016**
+_Herpetology Curatorial Assistant, Sam Noble OK Museum of Natural History_
+
+  - Conduct relabeling to update collection taxonomy
+  - Survey, catch, and process specimens for deposition in collection
+  - Entry/review of specimen collection database (morphology, locality, etc.)
+  
+**2015--2015**
+_Mammology Curatorial Assistant, Sam Noble OK Museum of Natural History_
+
+  - Inventory/validate records for current specimens in the mammal collection
+  - Entry of specimen data (morphology, locality, etc.) into collection database
+  
+**2013--2014**
+_Research Assistant, Pepperdine University_
+  
+  - Organize and carry out annual stream surveys of SMM streams
+  - Provide critical feedback on studies prior to journal submission
+  - Compile data into a central database of amphibian surveys that began in 1991
+  - Meet weekly with supervisor to discuss research projects
+  
+**2013–2014**
+_Administrative Assistant, Pepperdine University_
+
+  - Assist the Vice Provost for Research with the Waves of Innovation funding program
+  - Final review proposals, presentations, and official documents before submission
+  - Interact with high profile University members and coordinate committee meetings
+  
+**2013--2014**
+_Research Student, Rodney Honeycutt Lab_
+
+  - Use genetic lab techniques to analyze population phylogeography
+  - Study local populations of _Taricha torosa_
+  
+**2009–-2014**
+_Research Student, Lee Kats Lab_
+
+  - Investigate behavioral ecology in the streams of the Santa Monica Mountains (SMM) and the rainforest of the La Selva Research Station in Costa Rica
+  - Regular stream surveys in the SMM for USGS and State Park Services
+  - Annual presentation of current research at SCCUR
+  
+**2013–-2013** 
+_Restoration Ecologist, Mountains Restoration Trust (MRT)_
+
+  - Head up the invasive crayfish removal project (CRP) at Tapia Park (Malibu Creek)
+  - Supervise trapping, characterization, and removal of invasive _Procambarus clarkii_
+  - Lead invasion ecology education side project via remote video and in person instruction
+  - Manage the CRP data set and collaborate with local scientists
+  
+**2009–-2013** 
+_Office Assistant, Pepperdine University Seaver Dean’s Office_
+
+  - Greet visitors, digitize documents, and facilitate interdepartmental communications
+  - Assist event preparation for faculty/research award ceremonies
+  - Support the aforementioned events in person and provide presentation technical support
+  
+###Research Interests
+Community Ecology, Biodiversity and Systematics, Conservation Biology, Herpetology, and Tropical Ecology
+
+###Teaching Experience
+**2016** 
+Introductory Biology: Molecules, Cells, and Physiology, University of Oklahoma (TA, 1 semester)
+
+**2016** 
+Field Herpetology, University of Oklahoma (TA, 2 weeks)
+
+**2015**
+Human Physiology, University of Oklahoma (TA, 1 semester)
+
+**2014** 
+Introductory Zoology, University of Oklahoma (TA, 1 semester)
+
+**2012** 
+Introduction to Ecology, Pepperdine University (Undergraduate TA, 1 semester)
+
+**2011--2012** 
+Keck Research Seminar, Pepperdine University (Student Mentor, 2 semesters)
+
+**2010--2013** 
+Cellular Biology, Pepperdine University (Undergraduate TA, 4 semesters)
+
+**2010-–2011** 
+General Chemistry, Pepperdine University (Tutor, 2 semesters)
+
+\vspace{18ex}
+
+**_References available upon request_**
