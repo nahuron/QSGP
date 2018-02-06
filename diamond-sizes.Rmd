@@ -5,22 +5,68 @@ output: html_document
 ---
 
 ```{r setup, include = FALSE}
-library(ggplot2)
-library(dplyr)
-
+library(tidyverse)
+knitr::opts_chunk$set(echo = F, message = F, warning = F)
 smaller <- diamonds %>% 
   filter(carat <= 2.5)
+comma <- function(x) format(x, digits = 2, big.mark = ",")
 ```
 
-We have data about `r nrow(diamonds)` diamonds. Only 
+We have data about `r comma(nrow(diamonds))` diamonds. Only 
 `r nrow(diamonds) - nrow(smaller)` are larger than
-2.5 carats. The distribution of the remainder is shown
+2.5 carats. This is `r comma((nrow(diamonds) - nrow(smaller))/(nrow(diamonds)))` percent of all diamonds. The distribution of the remainder is shown
 below:
 
-```{r, echo = FALSE}
+```{r original, cache = T, dependson="setup"}
+lubridate::now()
 smaller %>% 
   ggplot(aes(carat)) + 
   geom_freqpoly(binwidth = 0.01)
 ```
 
 Oddly enough, this plot contains several relative maxima at or below 1.0 carats. The jagged peaks above 1.0 carats are more periodic and not as extreme, peaking at the quarter carat interval.
+
+
+###Now let's look at diamond sizes by color, cut, and clarity.
+
+First up is color, which is represented by `r length(unique(smaller$color))` possible colors. Below is the same distribution plot, but the data are separated into individual lines by colour.
+
+```{r color, cache=T, dependson="original"}
+lubridate::now()
+smaller %>%
+  ggplot() +
+  geom_freqpoly(mapping = aes(x = carat, group = color, color = color))
+```
+
+Second is cut, which has `r length(unique(smaller$cut))` possible values. Our plot is separated in the same way as for color, but with different line types.
+
+```{r cut, cache=T, dependson="original"}
+lubridate::now()
+smaller %>%
+  ggplot() +
+  geom_freqpoly(mapping = aes(x = carat, group = cut, lty = cut))
+```
+
+Lastly, we look at clarity. Clarity has `r length(unique(smaller$clarity))` possible values. A color coding system here makes comparison easier.
+
+
+```{r clarity, cache=T, dependson="original"}
+lubridate::now()
+smaller %>%
+  ggplot() +
+  geom_freqpoly(mapping = aes(x = carat, group = clarity, color = clarity, stroke=clarity))
+```
+
+###Largest Diamonds
+We looked at the smallest diamonds, now let's look at the largest 20.
+
+```{r 20 largest diamonds, cache=T, dependson=c("color", "cut", "clarity")}
+lubridate::now()
+diamonds %>%
+  arrange(desc(carat)) %>%
+  mutate(sizerank = (row_number(desc(carat)))) %>%
+  filter(sizerank < 21) %>%
+  select(carat:clarity, price) %>%
+  knitr::kable(format.args = list(big.mark=','), caption = "The Twenty Largest Diamonds From Largest to Smallest.")
+  
+```

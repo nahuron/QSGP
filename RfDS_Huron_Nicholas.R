@@ -1377,3 +1377,82 @@ flights %>%
 #sans serif for section titles, which are also colored various shades of blue. Links are also coded blue, as in html. Input text color is the same as pdf format.
 #Note: HTML resembles word, but with less coloration of text and contains specific input and output colored boxes.
 
+#27.3
+
+#Text formatting with markdown
+
+#there is a markdown quick reference in Help
+
+#exercises 27.3.1
+
+#1
+
+#create a brief CV with R markdown: name, include headings for education, employment, etc. bolded list per section. highlight year in bold
+#see the Nicholas_A_Huron_CV.Rmd file
+
+#2
+
+#Using the R Markdown quick reference, figure out how to:
+  
+#Add a footnote.
+#A box with a carrot and number [^1] will put a footnote after the word preceeding it. (This did not appear in the quick reference sheet)
+
+#Add a horizontal rule.
+#Three or more asterisks or dashes will give a horizontal rule
+
+#Add a block quote.
+# Use a > for a block quotes.
+
+#3
+
+#Copy and paste the contents of diamond-sizes.Rmd in to a local R markdown document. 
+#Check that you can run it, then add text after the frequency polygon that describes its most striking features.
+#downloaded to a local version...
+
+#27.4
+
+#adding chunks allows for code to be run in markdown. several ways to do this exist, but the format must always be:
+#```{r}
+#(insertchunkhere)
+#```
+
+#command alt i is a good shortcut for this
+
+#can add a name to chunk:
+#```{r chunkname}
+
+#chunk name "setup" is a special one, in notebook it will always run first
+
+#chunks have options that help make them run as intended
+
+#knitr:kable() can be used to make a table that is prettier than text output you normally see
+
+#you can also set cache=TRUE to save calculated output for certain chunks that take a lot of time
+#use the dependson = argument to make sure that a chunk that is cached has all that it needs
+
+#consider regularly cleaning cache with knitr::clean_cache()
+
+#can set global options with knitr::opts_chunk$set()
+
+#you can inbed inline code with `r `
+#use format to fix numbers added in text (sigfigs, etc.)
+
+#exercises 24.4.7
+
+#1
+
+#time to look at diamond-sizes.Rmd
+
+#2
+
+#Add a section that describes the largest 20 diamonds, including a table that displays their most important attributes.
+
+#3
+
+#Modify diamonds-sizes.Rmd to use comma() to produce nicely formatted output. Also include the percentage of diamonds that are larger than 2.5 carats (it is in the first bit of text).
+
+#4
+
+#Set up a network of chunks where d depends on c and b, and both b and c depend on a. Have each chunk print lubridate::now(), set cache = TRUE, then verify your understanding of caching. 
+#I did a version of this and kept the lubridate in...
+
