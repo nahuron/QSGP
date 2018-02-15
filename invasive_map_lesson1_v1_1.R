@@ -100,7 +100,7 @@ invasives$year <- as.numeric(substr(invasives$obsdate, start=1, stop=4))
 # but let's start by showing all the code.
 
 # invasives1900s <- invasives@data %>% filter(year >= 1900 & year <= 1909) # This is probably possible with dplyr pipe/filter() but I think easier w/ indexing bc of dataframe within spatial object
-#invasivesNArm <- invasives[!is.na(invasives@data$year),] # Get rid of entries without a year
+invasivesNArm <- invasives[!is.na(invasives@data$year),] # Get rid of entries without a year
 invasives1910s <- invasivesNArm[invasivesNArm@data$year >= 1910 & invasivesNArm@data$year <= 1919,] # Subset dataset to just have 1910s decade
 #invasives1900s <- invasivesNArm[invasivesNArm@data$year >= 1900 & invasivesNArm@data$year <= 1909,] # Subset dataset to just have 1900s decade
 #invasives1920s <- invasivesNArm[invasivesNArm@data$year >= 1920 & invasivesNArm@data$year <= 1929,] # Subset dataset to just have 1920s decade
