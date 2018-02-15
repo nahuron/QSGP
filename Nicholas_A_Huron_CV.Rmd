@@ -3,9 +3,9 @@
 #author: "Nicholas A. Huron"
 #date: 2018-02-05
 output:
-  pdf_document: default
-  word_document: default
   html_document: default
+  word_document: default
+  pdf_document: default
 ---
 
 #__Nicholas A. Huron__

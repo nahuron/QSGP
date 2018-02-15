@@ -1,0 +1,236 @@
+---
+title: "Week5A_map1_Huron"
+author: "Nicholas A. Huron"
+date: 2018-02-13
+output: html_document
+---
+
+##Set Up Code with Chunks from Tutorial
+###Load Required Packages
+This includes setting the working directory with `knitr::opts_knit$set(root.dir=)`.
+
+```{r setup, include=TRUE, results='hide', message=FALSE}
+rm(list=ls()) #start with a clean slate!
+#required packages from tutorial
+require(ggmap); require(sp); require(rgdal); require(raster); require(tidyverse); require(RColorBrewer)
+#add viridis package
+require(viridis)
+knitr::opts_chunk$set(echo = TRUE)
+#set the figure dims universally
+knitr::opts_chunk$set(fig.width=6, fig.height=10) 
+#set the dir
+knitr::opts_knit$set(root.dir="/Users/nicholashuron/Google Drive/QuantSci_GP/")
+```
+
+###Load Provided Data
+
+1. Load invasive data:
+```{r load invasives}
+invasives <- read_csv("./data/PA_Invasive_Species/all_obs_imap_18Dec17_v2_0.csv")
+```
+2. Load raster data
+```{r load temp}
+temp <- raster("./data/PA_Invasive_Species/raster/paTemp.tif")
+```
+3. Load polygon shapefile (can also use congressional maps, senate maps, etc. See shapefile folder)
+```{r load geopoli polygons}
+county <- readOGR(dsn="./data/PA_Invasive_Species/shapefiles/", layer='PaCounty2017_01')
+state <- readOGR(dsn="./data/PA_Invasive_Species/shapefiles/", layer='PaState2017_01')
+```
+
+###Clean Up the Loaded Data
+
+Change some column names to be more intuitive.
+```{r col change}
+colnames(invasives)[colnames(invasives) %in% 'obsorigxcoord'] <- 'long'
+colnames(invasives)[colnames(invasives) %in% 'obsorigycoord'] <- 'lat'
+```
+
+Standardize the projection across all data. Use the temperature data projection (WGS84) as the basis for others
+```{r set all to WGS84}
+#set the coords in the invasives objects
+coordinates(invasives) <- ~long+lat
+#set the projection
+proj4string(invasives) <- projection(temp)
+county <- spTransform(county, CRS(projection(temp)))
+state <- spTransform(state, CRS(projection(temp)))
+```
+
+###Explore the Data
+
+Let's figure out *the number of locations with invasive species per county!*
+```{r invasive locs}
+#obtain spatial "counties" values for invasives to confirm counties
+invasivesPerCounty <- over(invasives, county)
+#summarise by county
+invasivesPerCounty <- table(invasivesPerCounty$COUNTY_NAM)
+#tibble-fy it
+invasivesPerCounty <- as.tibble(invasivesPerCounty)
+#rename cols
+colnames(invasivesPerCounty) <- c('county', 'nInvasives')
+invasivesPerCounty
+```
+
+Now how about figuring out the *invasive species richness per county!*
+```{r invsive sr}
+#same step as above
+srPerCounty <- over(invasives, county)
+#add the invasive species sci names to the rows
+srPerCounty <- cbind(srPerCounty, invasives$state_scientific_name)
+#set a new col name to make easier to interpret
+colnames(srPerCounty)[colnames(srPerCounty) %in% 'invasives$state_scientific_name'] <- 'species'
+#group by county
+srPerCounty <- group_by(srPerCounty, COUNTY_NAM)
+#and summarise by unique values of species for county
+srPerCounty <- dplyr::summarise(srPerCounty, sr=length(unique(species))) # Count number of unique species per county
+srPerCounty
+```
+
+###Assignment Questions!
+
+####1. Make a barchart of the number of invasive species (species richness) per PA county. Bonus: Can you make the plot in descending order?
+
+We can use the object `srPerCounty` above to make a plot:
+
+```{r sr by county}
+ggplot(data = srPerCounty) +
+  geom_bar(mapping = aes(x = COUNTY_NAM, y = sr, fill = factor(..x..)), stat = "identity", show.legend=FALSE) +
+  coord_flip() +
+  labs(y = "Species Richness", x = "County", title = "Species Richness of Invasive Species in PA by County") +
+  theme(axis.text.y=element_text(size=8))
+```
+
+We can also make in alphabetical order by county (we have to remove NA's to get this to work for now).
+```{r sr by county alpha}
+ggplot(srPerCounty) +
+  geom_bar(mapping = aes(x = COUNTY_NAM, y = sr, fill = factor(..x..)), stat = "identity", show.legend=FALSE) +
+  coord_flip() +
+  labs(y = "Species Richness", x = "County", title = "Species Richness of Invasive Species in PA by County") +
+  scale_x_discrete(limits = rev(levels(srPerCounty$COUNTY_NAM)))
+```
+
+Finally, we can keep the NA and do it in descending order by SR for the **BONUS** question!
+```{r sr by descending sr}
+ggplot(data = srPerCounty) +
+  geom_bar(mapping = aes(x = reorder(COUNTY_NAM, sr), y = sr, fill = factor(..x..)), stat = "identity", show.legend=FALSE) +
+  coord_flip() +
+  labs(y = "Species Richness", x = "County", title = "Species Richness of Invasive Species in PA by County") +
+  scale_fill_viridis(discrete = T)
+```
+
+\
+
+####2. Make a map that gives the number of invasive species (species richness) per U.S. House of representative district. Hint: You do not have to start from scratch, just cut and paste (and clean) from the tutorial.
+
+```{r fig.height = 6, fig.width = 8}
+#so read in the US house district data
+house <- readOGR(dsn="./data/PA_Invasive_Species/shapefiles/", layer='PaCongressional2017_01')
+#fix it's CRS
+house <- spTransform(house, CRS(projection(temp)))
+
+#summarise the SR by district
+srPerHouse <- over(invasives, house)
+#add the invasive species sci names to the rows
+srPerHouse <- cbind(srPerHouse, invasives$state_scientific_name)
+#set a new col name to make easier to interpret
+colnames(srPerHouse)[colnames(srPerHouse) %in% 'invasives$state_scientific_name'] <- 'species'
+#group by county
+srPerHouse <- group_by(srPerHouse, LEG_DISTRI) 
+#and summarise by unique values of species for county
+srPerHouse <- dplyr::summarise(srPerHouse, sr=length(unique(species)))
+srPerHouse$LEG_DISTRI <- factor(x = srPerHouse$LEG_DISTRI, levels = sort(as.numeric(srPerHouse$LEG_DISTRI)))
+(srPerHouse <- srPerHouse %>%
+  filter(!is.na(LEG_DISTRI)) %>%
+  arrange(LEG_DISTRI))
+
+# First join the data we put together above with house
+invasivesHouse <- house
+#make sure levels order matches for the same col that we will join by
+invasivesHouse$LEG_DISTRI <- factor(x = invasivesHouse$LEG_DISTRI, levels = sort(as.numeric(invasivesHouse$LEG_DISTRI)))
+#now join them by col LEG_DISTRI!
+invasivesHouse@data <- left_join(invasivesHouse@data, srPerHouse, by='LEG_DISTRI')
+# Map with ggplot
+invasivesHousegg <- fortify(invasivesHouse, region='LEG_DISTRI') 
+#join the districts and the dataframe id back together
+invasivesHousegg <- left_join(invasivesHousegg, invasivesHouse@data, by=c("id" = 'LEG_DISTRI'))
+
+#plot that purtty map
+ggplot(data=invasivesHousegg)+
+  geom_polygon(aes(x=long, y=lat, group=group, fill=sr)) + # Color the counties by nInvasives
+  coord_fixed(1.3) + # This is to fix the height-width scale
+  scale_fill_viridis() #i use my own palettes, man
+```
+
+####3. Use ggplot (not spplot) to plot the number of invasive occurrences by county by decade from 1900 to the present. Here I would expect about 10-12 plots. Hint: Just complete the code in the tutorial.
+
+Fix the dates, just like in the tutorial:
+```{r fix date format}
+# First, bins number of invasives over time (bin by decade)
+fixDates <- unlist(strsplit(as.character(invasives$obsdate), ' '))
+fixDates <- fixDates[seq(1, length(fixDates), by=2)]
+invasives$obsdate <- as.Date(fixDates, format='%m/%d/%Y')
+invasives$year <- as.numeric(substr(invasives$obsdate, start=1, stop=4))
+```
+
+Now we need to subset the data by decade and create new objects by year (invasivesYYYYs) and a summary of observations by county for each decade (invasivesPerCountyYYYYs). We remove `NA`'s first though! See comments for additional steps in the loop.
+```{r subset and smush, fig.height = 6, fig.width = 8, warning=F}
+# Subset the data by decade for bins 
+# Note: This code could be made shorter with a 'for loop' or different type of function, 
+# Because I am a masochist, let's try to figure out the loop version of this
+invasivesNArm <- invasives[! is.na(invasives@data$year),] # Get rid of entries without a year
+#set an object for decade start counter for loop
+(startdec <- seq(from = 1900, to = 2017, by = 10))
+#the loop that gets the invasivesYYYYs objects
+for(a in 1:length(startdec)){
+  print(paste0("Decade starting with ", startdec[a], " and ending with ", (startdec[a]+9)))
+  assign(x = paste0("invasives",startdec[a],"s"), value = invasivesNArm[invasivesNArm@data$year >= startdec[a] & invasivesNArm@data$year <= (startdec[a] + 9),])
+#}
+#the loop that gets the invasivesPerCountyYYYYs objects and names their cols
+#for(b in 1:length(startdec)){
+  #do the over command to get the county spatial data in
+assign(x = paste0("invasivesPerCounty",startdec[a],"s"), value = over(get(paste0("invasives",startdec[a],"s")), county))
+  #summarise the data by county name
+assign(paste0("invasivesPerCounty",startdec[a],"s"), table(get(paste0("invasivesPerCounty",startdec[a],"s"))$COUNTY_NAM))
+  #make it a dataframe
+assign(paste0("invasivesPerCounty",startdec[a],"s"), as.data.frame(get(paste0("invasivesPerCounty",startdec[a],"s"))))
+  #code that uses a temporary object to rename the columns
+temporary <- get(paste0("invasivesPerCounty",startdec[a],"s"))
+colnames(temporary) <- c('COUNTY_NAM', 'nInvasives')
+#reassign the new col name object back to it's original object
+assign(x = paste0("invasivesPerCounty",startdec[a],"s"), value = temporary)
+}
+```
+
+Now we need to create a version of `county` (see above) for each decade to use.
+```{r smush}
+#now smush together
+for(c in 1:length(startdec)){
+  assign(x = paste0("invasivesCounty",startdec[c],"s"), value = county)
+  #assign(x = paste0("invasivesCounty",startdec[c],"s","@data"), value = left_join(get(paste0("invasivesCounty",startdec[c],"s"))@data, get(paste0("invasivesPerCounty",startdec[b],"s")), by = 'COUNTY_NAM'))  #this line is the problem child... i cannot get assign to assign a value to just the part of invasivesCountyYYYYs@data
+}
+
+#manually do the left_join() here
+invasivesCounty1900s@data <- left_join(invasivesCounty1900s@data, invasivesPerCounty1900s, by='COUNTY_NAM')
+invasivesCounty1910s@data <- left_join(invasivesCounty1910s@data, invasivesPerCounty1910s, by='COUNTY_NAM')
+invasivesCounty1920s@data <- left_join(invasivesCounty1920s@data, invasivesPerCounty1920s, by='COUNTY_NAM')
+invasivesCounty1930s@data <- left_join(invasivesCounty1930s@data, invasivesPerCounty1930s, by='COUNTY_NAM')
+invasivesCounty1940s@data <- left_join(invasivesCounty1940s@data, invasivesPerCounty1940s, by='COUNTY_NAM')
+invasivesCounty1950s@data <- left_join(invasivesCounty1950s@data, invasivesPerCounty1950s, by='COUNTY_NAM')
+invasivesCounty1960s@data <- left_join(invasivesCounty1960s@data, invasivesPerCounty1960s, by='COUNTY_NAM')
+invasivesCounty1970s@data <- left_join(invasivesCounty1970s@data, invasivesPerCounty1970s, by='COUNTY_NAM')
+invasivesCounty1980s@data <- left_join(invasivesCounty1980s@data, invasivesPerCounty1980s, by='COUNTY_NAM')
+invasivesCounty1990s@data <- left_join(invasivesCounty1990s@data, invasivesPerCounty1990s, by='COUNTY_NAM')
+invasivesCounty2000s@data <- left_join(invasivesCounty2000s@data, invasivesPerCounty2000s, by='COUNTY_NAM')
+invasivesCounty2010s@data <- left_join(invasivesCounty2010s@data, invasivesPerCounty2010s, by='COUNTY_NAM')
+
+for(d in 1:length(startdec)){
+  assign(x = paste0("invasivesCountygg",startdec[d],"s"), value = fortify(get(paste0("invasivesCounty",startdec[d],"s")), region='COUNTY_NAM'))
+  assign(x = paste0("invasivesCountygg",startdec[d],"s"), value = left_join(get(paste0("invasivesCountygg",startdec[d],"s")), get(paste0("invasivesCounty",startdec[d],"s"))@data, by=c("id"='COUNTY_NAM')))
+  #then do the ggplot thang
+  print(ggplot(data = get(paste0("invasivesCountygg",startdec[d],"s"))) +
+    geom_polygon(aes(x=long, y=lat, group=group, fill=nInvasives)) +
+    coord_fixed(1.3) +
+    scale_fill_viridis())
+}
+
+```

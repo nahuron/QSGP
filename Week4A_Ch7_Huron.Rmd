@@ -1,0 +1,236 @@
+---
+title: "Week4A_Ch7_Huron"
+author: "Nicholas A. Huron"
+date: 2018-02-13
+output: html_document
+---
+
+Start with some setup code!
+```{r setup}
+#packages required
+library(dplyr)
+library(nycflights13)
+#some global params
+knitr::opts_chunk$set(echo = T)
+```
+
+-----
+##Chapter 7
+
+```{r add some required packages}
+library(tidyverse)
+```
+
+####Exercises 7.3.4
+  1. Explore the distribution of each of the x, y, and z variables in diamonds. What do you learn? How can you figure out which ones are length, width, and depth?
+  
+```{r look at diamond dims}
+  #first try to redo table
+  dia_x <- diamonds %>%
+    transmute(meas = x, shape = "x")
+  dia_y <- diamonds %>%
+    transmute(meas = y, shape = "y")
+  dia_z <- diamonds %>%
+    transmute(meas = z, shape = "z")
+  #combine
+  dia_xyz <- rbind(dia_x,dia_y, dia_z)
+  
+#now plot all of them together
+  ggplot(data = dia_xyz, mapping = aes(x = meas, fill = shape)) +
+    geom_density(alpha = 0.8)
+  
+#or separately
+  ggplot(data = dia_x, mapping = aes(x = meas)) +
+    geom_density(alpha = 0.5, fill = "red") +
+    xlim(c(0,20))
+  ggplot(data = dia_y, mapping = aes(x = meas)) +
+    geom_density(alpha = 0.5, fill = "green")+
+    xlim(c(0,20))
+  ggplot(data = dia_z, mapping = aes(x = meas)) +
+    geom_density(alpha = 0.5, fill = "blue")+
+    xlim(c(0,20))
+```
+
+So I plotted the density plots of all three together, and there are definitely clear outliers based on the x axis (the values for each dimension). It is clear that the **Y and Z** variables contain some extreme outliers (2 and 1 values, respectively). **X** does not have this same problem! When you set clear limits for the measurements, such that the values range from 0--20, it looks like **X** and **Y** are closer to each other, while **Z** is slightly smaller sometimes.
+```{r with limits}
+ ggplot(data = dia_xyz, mapping = aes(x = meas, fill = shape)) +
+  geom_density(alpha = 0.5) + 
+  xlim(c(0,20))
+```
+
+It sure seems like **X and Y** are the two dimensions at the face of the diamonds and Z is the depth! The first two appear to have the same dimensions, since they turned the fill a brown green color.
+
+ 4. Compare and contrast coord_cartesian() vs xlim() or ylim() when zooming in on a histogram. What happens if you leave binwidth unset? What happens if you try and zoom so only half a bar shows?
+```{r}
+  ggplot(data = diamonds, mapping = aes(x = price)) +
+  geom_histogram(binwidth = (sd(diamonds$price)/100)) +
+  xlim(c(0, 2500))
+```
+```{r}
+ggplot(data = diamonds, mapping = aes(x = price)) +
+  geom_histogram(binwidth = (sd(diamonds$price)/100)) +
+  coord_cartesian(c(0, 2500))
+```
+
+The biggest difference, as mentioned in the text, is that xlim will truncate the graph, leading to loss of bins that contain data (if outside the expected range), whereas coord_cartesian will graphically zoom in but retain the actual dataset.
+
+Let's leave binwidth unset for each:
+```{r}
+  ggplot(data = diamonds, mapping = aes(x = price)) +
+  geom_histogram() +
+  xlim(c(0, 2500))
+```
+```{r}
+ggplot(data = diamonds, mapping = aes(x = price)) +
+  geom_histogram() +
+  coord_cartesian(c(0, 2500))
+```
+
+They both default to 30 bins! xlim sets the 30 bins based on the window being viewed, but the coord_cartesian uses 30 bins for the whole dataset, even when not visible in the window.
+
+Now how about half a bar:
+```{r}
+  ggplot(data = diamonds, mapping = aes(x = price)) +
+  geom_histogram(bins=1) +
+  xlim(c(250, 350))
+```
+
+```{r}
+ggplot(data = diamonds, mapping = aes(x = price)) +
+  geom_histogram(bins = 1) +
+  coord_cartesian(c(250, 350))
+```
+
+Here, xlim sets the bins for the window, producing a grey box of the area of the plot, whereas the coord_cartesian retains the original edges instead.
+
+####Exercises 7.4.1
+ 1. What happens to missing values in a histogram? What happens to missing values in a bar chart? Why is there a difference?
+  
+Histogram:
+
+```{r na in hist}
+(diamonds2 <- diamonds %>% 
+  mutate(y = ifelse(y < 3 | y > 20, NA, y)))
+
+ggplot(diamonds2) +
+  geom_histogram(mapping = aes(x = y))
+```
+
+Histograms remove Na values by default!
+
+Bar chart:
+```{r na in bar}
+(diamonds2 <- diamonds %>% 
+  mutate(color = replace(x = diamonds$color,diamonds$color == 'E', NA)))
+ggplot(diamonds2) +
+  geom_bar(mapping = aes(x = color))
+```
+
+NA's get their own category in a bar chart!
+
+  2. What does na.rm = TRUE do in mean() and sum()?
+
+This command will remove the NA values in a dataset and then calculate the corresponding metric!
+
+####Exercises 7.5.1.1
+
+  2. What variable in the diamonds dataset is most important for predicting the price of a diamond? How is that variable correlated with cut? Why does the combination of those two relationships lead to lower quality diamonds being more expensive?
+  
+>It probably has to do with how big the rock is... even though this whole section is about **categorical** variables.
+
+```{r diamonds}
+diamonds %>%
+  arrange(desc(price)) %>%
+ggplot(mapping = aes(x = carat, y = price)) +
+  geom_point() +
+  geom_smooth()
+```
+
+>*Yup, that is definitely the case.*
+
+####Exercises 7.5.2.1
+
+  2. Use geom_tile() together with dplyr to explore how average flight delays vary by destination and month of year. What makes the plot difficult to read? How could you improve it?
+
+```{r}
+flights %>%
+  group_by(dest, month, year) %>%
+  summarise(mean_dep_delay = mean(dep_delay)) %>%
+  ggplot(mapping = aes(x = month, y = dest)) +
+  geom_tile(mapping = aes(fill = mean_dep_delay))
+```
+
+Wow there are a lot of NA values messing with this (some dest have NA for a particular month)... so why not remove them?
+
+```{r}
+flights %>%
+  group_by(dest, month, year) %>%
+  summarise(mean_dep_delay = mean(dep_delay, na.rm = T)) %>%
+  filter(!is.na(mean_dep_delay)) %>%
+  ggplot(mapping = aes(x = month, y = dest)) +
+  geom_tile(mapping = aes(fill = mean_dep_delay))
+```
+
+>That looks better!
+
+  3. Why is it slightly better to use aes(x = color, y = cut) rather than aes(x = cut, y = color) in the example above?
+  
+Original:
+```{r}
+diamonds %>% 
+  count(color, cut) %>%  
+  ggplot(mapping = aes(x = color, y = cut)) +
+    geom_tile(mapping = aes(fill = n))
+```
+
+This is what option 2 looks like:
+```{r}
+diamonds %>% 
+  count(color, cut) %>%  
+  ggplot(mapping = aes(y = color, x = cut)) +
+    geom_tile(mapping = aes(fill = n))
+```
+
+>Cut has a logical order for categories. What the heck does D vs J color mean to the layperson?! If we have the X axis in a continuum, that seems better! So stick to the original.
+
+####Exercises 7.5.3
+  2. Visualise the distribution of carat, partitioned by price.
+  
+```{r}
+library(hexbin)
+ggplot(data = diamonds) +
+  geom_hex(mapping = aes(y = carat, x = price))
+ggplot(data = diamonds, mapping = aes(x = price, y = carat)) + 
+  geom_boxplot(mapping = aes(group = cut_width(price, 1000)), varwidth = TRUE)
+```
+
+>We have two types of plots:
+  - the hexplot, which bins in both directions.
+  - the boxplots, which bins the prices by 1000 increments with scaling of boxplots to the sample size!
+  
+  4. Combine two of the techniques you’ve learned to visualise the combined distribution of cut, carat, and price.
+  
+```{r}
+library(hexbin)
+library(viridis)
+diamonds %>%
+  group_by(cut) %>%
+ggplot() +
+  geom_hex(mapping = aes(y = carat, x = price)) +
+  facet_grid(facets = cut ~ ., as.table = T) +
+  scale_fill_viridis(end = 0.85, direction = -1) +
+  xlim(c(min(diamonds$price),max(diamonds$price))) +
+  ylim(c(min(diamonds$carat), max(diamonds$carat)))
+```
+
+  5.Two dimensional plots reveal outliers that are not visible in one dimensional plots. For example, some points in the plot below have an unusual combination of x and y values, which makes the points outliers even though their x and y values appear normal when examined separately.
+
+```{r data}
+ggplot(data = diamonds) +
+  geom_point(mapping = aes(x = x, y = y)) +
+  coord_cartesian(xlim = c(4, 11), ylim = c(4, 11))
+```
+
+Why is a scatterplot a better display than a binned plot for this case?
+
+> A binned plot would likely hide some of these outliers by grouping them more tightly with the rest of the distribution. For boxplots, they would need to fall well outside the data, whereas binning would lead to them appearing less severe of outliers.
