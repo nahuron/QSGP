@@ -184,9 +184,7 @@ invasivesNArm <- invasives[! is.na(invasives@data$year),] # Get rid of entries w
 for(a in 1:length(startdec)){
   print(paste0("Decade starting with ", startdec[a], " and ending with ", (startdec[a]+9)))
   assign(x = paste0("invasives",startdec[a],"s"), value = invasivesNArm[invasivesNArm@data$year >= startdec[a] & invasivesNArm@data$year <= (startdec[a] + 9),])
-#}
 #the loop that gets the invasivesPerCountyYYYYs objects and names their cols
-#for(b in 1:length(startdec)){
   #do the over command to get the county spatial data in
 assign(x = paste0("invasivesPerCounty",startdec[a],"s"), value = over(get(paste0("invasives",startdec[a],"s")), county))
   #summarise the data by county name
@@ -201,7 +199,7 @@ assign(x = paste0("invasivesPerCounty",startdec[a],"s"), value = temporary)
 }
 ```
 
-Now we need to create a version of `county` (see above) for each decade to use.
+Now we need to create a version of `county` (see above) for each decade to use. We then create a version for each decade (invasivesCountyYYYYs). Then, the loop stuff craps the bed on us when we try to assign a new value with `left_join()` with the `invasivesCountyYYYYs@data` element of the broader object. So we manually run the `left_join()` command for each decade object, much to my chargrin.
 ```{r smush}
 #now smush together
 for(c in 1:length(startdec)){
@@ -222,7 +220,10 @@ invasivesCounty1980s@data <- left_join(invasivesCounty1980s@data, invasivesPerCo
 invasivesCounty1990s@data <- left_join(invasivesCounty1990s@data, invasivesPerCounty1990s, by='COUNTY_NAM')
 invasivesCounty2000s@data <- left_join(invasivesCounty2000s@data, invasivesPerCounty2000s, by='COUNTY_NAM')
 invasivesCounty2010s@data <- left_join(invasivesCounty2010s@data, invasivesPerCounty2010s, by='COUNTY_NAM')
+```
 
+Now that we have that done, we can ensure that our spatial data and summary data are joined. Lastly, we use another `for()` loop to plot iteratively for each decade!
+```{r some more smushing and then plotting}
 for(d in 1:length(startdec)){
   assign(x = paste0("invasivesCountygg",startdec[d],"s"), value = fortify(get(paste0("invasivesCounty",startdec[d],"s")), region='COUNTY_NAM'))
   assign(x = paste0("invasivesCountygg",startdec[d],"s"), value = left_join(get(paste0("invasivesCountygg",startdec[d],"s")), get(paste0("invasivesCounty",startdec[d],"s"))@data, by=c("id"='COUNTY_NAM')))
@@ -230,7 +231,8 @@ for(d in 1:length(startdec)){
   print(ggplot(data = get(paste0("invasivesCountygg",startdec[d],"s"))) +
     geom_polygon(aes(x=long, y=lat, group=group, fill=nInvasives)) +
     coord_fixed(1.3) +
-    scale_fill_viridis())
+    scale_fill_viridis()) +
+    ggtitle(label = "Invasive")
 }
 
 ```
