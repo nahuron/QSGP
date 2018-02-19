@@ -1,0 +1,1269 @@
+---
+title: "R For Data Science Working Notebook"
+author: "Nicholas A. Huron"
+output:
+  html_notebook: default
+  pdf_document: default
+---
+Start with some setup code!
+```{r setup}
+#packages required
+require(tidyverse)
+require(nycflights13)
+#some global params
+knitr::opts_chunk$set(echo = T)
+```
+
+-----
+
+##Chapter 6
+
+###Section 6.1
+So, if you were not using the script editor before (God bless your soul if that applies to you), you should probably do so from now on.
+
+Command + Enter is a great shortcut to run the code your cursor is on presently. I use it 80% of the time, every time.
+
+You can practice running a script by repeatedly pressing this shortcut through the code, it will advance through lines/commands.
+
+```{r example for run shortcut}
+#some filter function from the book
+not_cancelled <- flights %>% 
+  filter(!is.na(dep_delay), !is.na(arr_delay))
+
+#group and summarise
+not_cancelled %>% 
+  group_by(year, month, day) %>% 
+  summarise(mean = mean(dep_delay))
+```
+>You get: a table of summarise results!
+
+
+If you want the whole code from the script editor to run, command + shift + s is what you are looking for.
+
+
+>*Worthwhile etiquette note*: if you intend to share code with others, avoid setting global params for them, such as setwd() or install.packages() as a default. Obviously, there may be some exceptions to this, but it is worth mentioning.
+
+###Section 6.2
+Some notes on the Rstudio interface for diagnosing problems: Red squiggly lines and an "x" button will show up when there is a syntax error, such as unpaired parentheses. You can use the tooltip over the button to get more info regarding the problem.
+
+###Section 6.3
+Now we get to "practice" some of the tips and stuff. Woo.
+
+1. Go to the RStudio Tips [twitter account](https://twitter.com/rstudiotips) and find one tip that looks interesting. Practice using it!
+
+The tip that interests me the most is [this](https://twitter.com/rstudiotips/status/865613484121137152) Sublime-style multiple cursors trick! You can easily add a common suffix to the matching text...
+
+So I have this little code chunk from another script that I am using regex for substituting values. It won't run, but I can easily change it from this:
+```{r example before, eval=F}
+#merge the subspecies
+dat.tt$species <- gsub("Leiocephalus lunatus lewisi", "Leiocephalus lunatus", dat.tt$species)
+dat.tt$species <- gsub("Leiocephalus lunatus melaenacelis", "Leiocephalus lunatus", dat.tt$species)
+dat.tt$species <- gsub("Leiocephalus psammodromus hyphantus", "Leiocephalus psammodromus", dat.tt$species)
+```
+to this (as long as I realize it will change all of them if I do not stay in the selected text):
+```{r example after, eval=F}
+#merge the subspecies
+dat.tt$species <- gsub("L. lunatus lewisi", "L. lunatus", dat.tt$species)
+dat.tt$species <- gsub("L. lunatus melaenacelis", "L. lunatus", dat.tt$species)
+dat.tt$species <- gsub("L. psammodromus hyphantus", "L. psammodromus", dat.tt$species)
+```
+
+2. What other common mistakes will RStudio diagnostics report? Read [this](https://support.rstudio.com/hc/en-us/articles/205753617-Code-Diagnostics) to find out.
+
+  - can confirm that arguments in functions are included and have appripriate syntax
+  - can check that variables are appropriate (e.g., no definition in scope, defined but not used)
+  - style diagnositics, such as whitespace
+  - can even do diagnostics in other code languages
+  - some of these same diagnostics can be done for entire projects too
+
+------
+
+##Chapter 7
+
+###Section 7.1
+####Exploratory Data Analysis
+  1. come up with questions about dataset
+  2. seek answers via visualization, transformation, and modeling the data
+  3. refine question based on step 2 and generate new questions
+  
+```{r add some required packages}
+library(tidyverse)
+```
+
+###Section 7.2
+When doing EDA, there are no inherently "wrong" questions, but some particularly helpful ones follow along these lines:
+
+  1. What type of variation occurs within variables?
+  2. What type of covariation occurs between variables?
+
+Data are **tidy** if they have one value per cell, one variable per column, and one observation per row for a particular set of tabulated data.
+
+###Section 7.3
+**Variation** is the phenomenon that variable values change from measurement to measurement. 
+
+It is worth noting the distinction between **continuous** and **categorical** variables. The former are numeric and can "take any of an infinite set of ordered values." Conversely, the latter are easily separated into discrete sets, typically as factors in R.
+
+Here is an example of **categorical** variable visualization:
+```{r barplot}
+ggplot(data = diamonds) +
+  geom_bar(mapping = aes(x = cut))
+```
+The `dplyr::count()` function can get the counts by category as well:
+```{r get counts}
+diamonds %>%
+  count(cut)
+```
+\   
+Now on to a **continuous** variable example with a histogram:
+
+```{r histogram}
+ggplot(data = diamonds) +
+  geom_histogram(mapping = aes(x = carat), binwidth = 0.25)
+```
+
+Can compute the histogram values manually with `dplyr::count()` and `ggplot2::cut_width()`:
+
+```{r example with count and cut_width}
+diamonds %>%
+  count(cut_width(carat, 0.25)) #note: i used binwidth 0.25, not 0.50
+```
+
+You should always experiment with binwidth for histograms!
+
+Here is an example with smaller bins for a subset of the diamonds data:
+
+```{r smaller binwidth histogram}
+smaller <- diamonds %>% 
+  filter(carat < 3)
+  
+ggplot(data = smaller, mapping = aes(x = carat)) +
+  geom_histogram(binwidth = 0.1)
+```
+
+This shows how much can be hidden in a single bin...
+
+When you want to do multiple histograms, consider `geom_freqpoly()`. It calculates the same but uses a line instead.
+
+```{r freqplot}
+ggplot(data = smaller, mapping = aes(x = carat, colour = cut)) +
+  geom_freqpoly(binwidth = 0.1)
+```
+
+Outliers can be tricky to spot. Take this example:
+```{r outlier y diamonds}
+ggplot(diamonds) + 
+  geom_histogram(mapping = aes(x = y), binwidth = 0.5)
+```
+The only odd part here is the range of y, relative to the visible barplot. What is the deal? To spot the odd outliers, we can use `coord_cartesian()`:
+
+```{r look at outliers}
+ggplot(diamonds) + 
+  geom_histogram(mapping = aes(x = y), binwidth = 0.5) +
+  coord_cartesian(ylim = c(0, 50))
+```
+Now we can see the outliers better! We can extract them in the table too. It turns out that these are incorrect data transcription!
+```{r look at outliers table}
+unusual <- diamonds %>% 
+  filter(y < 3 | y > 20) %>% 
+  select(price, x, y, z) %>%
+  arrange(y)
+unusual
+```
+
+####Exercises 7.3.4
+  1. Explore the distribution of each of the x, y, and z variables in diamonds. What do you learn? How can you figure out which ones are length, width, and depth?
+  
+```{r look at diamond dims}
+  #first try to redo table
+  dia_x <- diamonds %>%
+    transmute(meas = x, shape = "x")
+  dia_y <- diamonds %>%
+    transmute(meas = y, shape = "y")
+  dia_z <- diamonds %>%
+    transmute(meas = z, shape = "z")
+  #combine
+  dia_xyz <- rbind(dia_x,dia_y, dia_z)
+  
+#now plot all of them together
+  ggplot(data = dia_xyz, mapping = aes(x = meas, fill = shape)) +
+    geom_density(alpha = 0.8)
+  
+#or separately
+  ggplot(data = dia_x, mapping = aes(x = meas)) +
+    geom_density(alpha = 0.5, fill = "red") +
+    xlim(c(0,20))
+  ggplot(data = dia_y, mapping = aes(x = meas)) +
+    geom_density(alpha = 0.5, fill = "green")+
+    xlim(c(0,20))
+  ggplot(data = dia_z, mapping = aes(x = meas)) +
+    geom_density(alpha = 0.5, fill = "blue")+
+    xlim(c(0,20))
+```
+So I plotted the density plots of all three together, and there are definitely clear outliers based on the x axis (the values for each dimension). It is clear that the **Y and Z** variables contain some extreme outliers (2 and 1 values, respectively). **X** does not have this same problem! When you set clear limits for the measurements, such that the values range from 0--20, it looks like **X** and **Y** are closer to each other, while **Z** is slightly smaller sometimes.
+```{r with limits}
+ ggplot(data = dia_xyz, mapping = aes(x = meas, fill = shape)) +
+  geom_density(alpha = 0.5) + 
+  xlim(c(0,20))
+```
+It sure seems like **X and Y** are the two dimensions at the face of the diamonds and Z is the depth! The first two appear to have the same dimensions, since they turned the fill a brown green color.
+  
+  
+  2. Explore the distribution of price. Do you discover anything unusual or surprising? (Hint: Carefully think about the binwidth and make sure you try a wide range of values.)
+  
+  So let's plot price with `geom_histogram()`. I started with the standard deviation (SD) as a binwidth (use `sd()`) and preceeded to split bins into smaller groups by dividing the SD by 10^X^.
+  
+  FYI: the SD is `sd(diamonds$price)` and is almost 4000 units.
+  
+```{r prices bar graph}
+ggplot(data = diamonds, mapping = aes(x = price)) +
+  geom_histogram(binwidth = (sd(diamonds$price)/100))
+```
+When we divided by 10^2^, we see a strange break somewhere at 0--2500, likely around 1500. Let's replot it on a narrower x limit and use `count()` and `cut_width()` to look more into it, but we need to break the groups up more evenly:
+```{r look for gap}
+ggplot(data = diamonds, mapping = aes(x = price)) +
+  geom_histogram(binwidth = (sd(diamonds$price)/100)) +
+  xlim(c(0, 2500))
+
+diamonds %>%
+  count(cut_width(price, 100))
+```
+
+  >**We can see the gap is right around 1500!**
+  
+  3. How many diamonds are 0.99 carat? How many are 1 carat? What do you think is the cause of the difference?
+
+Let's figure out 0.99 carats:
+```{r 0.99}
+diamonds %>%
+  filter(carat == 0.99) %>%
+  summarise(n())
+```
+There are *23* diamonds at 0.99 carats!
+
+Let's do the same for 1.00 carats:
+```{r 1.00}
+diamonds %>%
+  filter(carat == 1.00) %>%
+  summarise(n())
+```
+There are *1558* 1.00 carat diamonds! Clearly, the value of being 1 carat is a big deal in the diamond industry!!!
+
+  4. Compare and contrast coord_cartesian() vs xlim() or ylim() when zooming in on a histogram. What happens if you leave binwidth unset? What happens if you try and zoom so only half a bar shows?
+```{r}
+  ggplot(data = diamonds, mapping = aes(x = price)) +
+  geom_histogram(binwidth = (sd(diamonds$price)/100)) +
+  xlim(c(0, 2500))
+```
+```{r}
+ggplot(data = diamonds, mapping = aes(x = price)) +
+  geom_histogram(binwidth = (sd(diamonds$price)/100)) +
+  coord_cartesian(c(0, 2500))
+```
+
+The biggest difference, as mentioned in the text, is that xlim will truncate the graph, leading to loss of bins that contain data (if outside the expected range), whereas coord_cartesian will graphically zoom in but retain the actual dataset.
+
+Let's leave binwidth unset for each:
+```{r}
+  ggplot(data = diamonds, mapping = aes(x = price)) +
+  geom_histogram() +
+  xlim(c(0, 2500))
+```
+```{r}
+ggplot(data = diamonds, mapping = aes(x = price)) +
+  geom_histogram() +
+  coord_cartesian(c(0, 2500))
+```
+
+They both default to 30 bins! xlim sets the 30 bins based on the window being viewed, but the coord_cartesian uses 30 bins for the whole dataset, even when not visible in the window.
+
+Now how about half a bar:
+```{r}
+  ggplot(data = diamonds, mapping = aes(x = price)) +
+  geom_histogram(bins=1) +
+  xlim(c(250, 350))
+```
+
+```{r}
+ggplot(data = diamonds, mapping = aes(x = price)) +
+  geom_histogram(bins = 1) +
+  coord_cartesian(c(250, 350))
+```
+Here, xlim sets the bins for the window, producing a grey box of the area of the plot, whereas the coord_cartesian retains the original edges instead.
+
+###Section 7.4
+####Data Abnormalities and NA's
+Dealing with missing values or 'wonky' values, you can:
+  1. filter the data to avoid the rows with values that are problematic
+```{r}
+dim(diamonds)  
+dim(diamonds2 <- diamonds %>% 
+  filter(between(y, 3, 20)))
+```
+  2. Or, you can replace odd values with NA. `mutate()` and `ifelse()` can get this done!
+```{r}
+(diamonds2 <- diamonds %>% 
+  mutate(y = ifelse(y < 3 | y > 20, NA, y)))
+```
+
+Ggplot2 will warn that values are missing from a plot, which is good data science etiquette. `na.rm=TRUE` will suppress the warning by dropping such values. Sometimes you want to separate out the NA's to compare:
+```{r NA compare}
+nycflights13::flights %>% 
+  mutate(
+    cancelled = is.na(dep_time),
+    sched_hour = sched_dep_time %/% 100,
+    sched_min = sched_dep_time %% 100,
+    sched_dep_time = sched_hour + sched_min / 60
+  ) %>% 
+  ggplot(mapping = aes(sched_dep_time)) + 
+    geom_freqpoly(mapping = aes(colour = cancelled), binwidth = 1/4)
+```
+####Exercises 7.4.1
+  1. What happens to missing values in a histogram? What happens to missing values in a bar chart? Why is there a difference?
+  
+Histogram:
+
+```{r na in hist}
+(diamonds2 <- diamonds %>% 
+  mutate(y = ifelse(y < 3 | y > 20, NA, y)))
+
+ggplot(diamonds2) +
+  geom_histogram(mapping = aes(x = y))
+```
+Histograms remove Na values by default!
+
+Bar chart:
+```{r na in bar}
+(diamonds2 <- diamonds %>% 
+  mutate(color = replace(x = diamonds$color,diamonds$color == 'E', NA)))
+ggplot(diamonds2) +
+  geom_bar(mapping = aes(x = color))
+```
+NA's get their own category in a bar chart!
+
+  2. What does na.rm = TRUE do in mean() and sum()?
+This command will remove the NA values in a dataset and then calculate the corresponding metric!
+
+###Section 7.5
+####Covariation!
+**Covariation** describes the tendency of 2+ variables to vary together in a way that suggests as relationship.
+
+Depending on the type of variables involved, visualisation best practices differ:
+  1. categorical and continuous variable pair
+  If counts differ significantly, density plots are the way to go!
+  
+```{r density plot}
+ggplot(data = diamonds, mapping = aes(x = price, y = ..density..)) + 
+  geom_freqpoly(mapping = aes(colour = cut), binwidth = 500)
+```
+
+  You can also use a boxplot!
+
+>NOTE: points that are >1.5 times the interquartile range limits (IQR, or the 25th--75th percentile) are shown. The *whisker* goes to the farthest non-outlier point.
+
+```{r boxplot}
+ggplot(data = diamonds, mapping = aes(x = cut, y = price)) +
+  geom_boxplot()
+```
+>If you want to re-order a categorical variable, use `reorder()` to do so!
+
+Compare the following plots: 
+```{r unordered vs ordered}
+ggplot(data = mpg, mapping = aes(x = class, y = hwy)) +
+  geom_boxplot()
+ggplot(data = mpg) +
+  geom_boxplot(mapping = aes(x = reorder(class, hwy, FUN = median), y = hwy))
+```
+
+Just like with barplots, `coord_flip()` helps with long variable names.
+```{r coordflip + ordered}
+ggplot(data = mpg) +
+  geom_boxplot(mapping = aes(x = reorder(class, hwy, FUN = median), y = hwy)) +
+  coord_flip()
+```
+
+####Exercises 7.5.1
+  1. Use what you’ve learned to improve the visualisation of the departure times of cancelled vs. non-cancelled flights.
+```{r improved flights}
+flights2 <- flights %>% 
+  mutate(
+    cancelled = is.na(dep_time),
+    sched_hour = sched_dep_time %/% 100,
+    sched_min = sched_dep_time %% 100,
+    sched_dep_time = sched_hour + sched_min / 60
+    )
+
+  ggplot(data = flights2, mapping = aes(x = sched_dep_time, y = ..density..)) + 
+    geom_freqpoly(mapping = aes(colour = cancelled), binwidth = 1/4)
+
+  ggplot(data = flights2) +
+    geom_boxplot(mapping = aes(x = cancelled, y = sched_dep_time, fill = cancelled), show.legend = F) +
+    coord_flip()
+```
+With both of these, we can get some better idea of how the two data partitions compare!
+
+  2. What variable in the diamonds dataset is most important for predicting the price of a diamond? How is that variable correlated with cut? Why does the combination of those two relationships lead to lower quality diamonds being more expensive?
+  
+>It probably has to do with how big the rock is... even though this whole section is about **categorical** variables.
+
+```{r diamonds}
+diamonds %>%
+  arrange(desc(price)) %>%
+ggplot(mapping = aes(x = carat, y = price)) +
+  geom_point() +
+  geom_smooth()
+```
+
+>*Yup, that is definitely the case.*
+ 
+  3. Install the ggstance package, and create a horizontal boxplot. How does this compare to using coord_flip()?
+  
+```{r install ggstance, results = 'hide'}
+install.packages("ggstance", dependencies = T, verbose = F)
+library(ggstance)
+```
+```{r horizontal plot vs coordflip}
+ggplot(data = mpg) +
+  geom_boxploth(mapping = aes(y = class, x = hwy))
+
+ggplot(data = mpg) +
+  geom_boxplot(mapping = aes(x = class, y = hwy)) +
+  coord_flip()
+```
+> **The key difference is that when using `ggstance::geom_boxploth`, you have to set `x = ` and `y = ` as you would after rotation, whereas with `coord_flip()`, you treat it as before**
+
+  4. One problem with boxplots is that they were developed in an era of much smaller datasets and tend to display a prohibitively large number of “outlying values”. One approach to remedy this problem is the letter value plot. Install the lvplot package, and try using geom_lv() to display the distribution of price vs cut. What do you learn? How do you interpret the plots?
+```{r install lvplot, results = 'hide'}
+install.packages("lvplot", dependencies = T, verbose = F)
+library(lvplot)
+```
+```{r geom_lv}
+ggplot(data = diamonds, mapping = aes(x = cut, y = price)) +
+  geom_lv(outlier.colour = "blue")
+```
+So this type of plot uses k letter grupings to build out density pixels. Outliers are still separate blocks, but now the shape of the distribution is far clearer for each (e.g., ideal cut diamonds are skewed towards lower prices). Most of the fair cut diamonds are clustered towards the cheaper end, like other groups. However, there are numerous outliers for this group.
+
+  5. Compare and contrast geom_violin() with a facetted geom_histogram(), or a coloured geom_freqpoly(). What are the pros and cons of each method?
+
+So let's compare the different style plots in the order of this question:
+```{r compare plot styles}
+ggplot(data = diamonds, mapping = aes(x = cut, y = price)) +
+  geom_violin()
+ggplot(data = diamonds, mapping = aes(x = price, y = ..density..)) +
+  geom_histogram() +
+  facet_grid(facets = cut ~ .)
+ggplot(data = diamonds, mapping = aes(x = price, y= ..density.., color = cut)) +
+  geom_freqpoly()
+```
+Some notes on each type:
+  - violin: This method shows distribution shape nicely, but it fails to highlight outliers well and narrow tails may misinform interpretation.
+  - facetted histograms: As with all histograms, binning can make the data display a certain pattern if one is not careful. That being said, it is easier to see narrow distrubtion tail shape.
+  - freqpoly: The color scheme shows the distributions on the same space, making comparisons easier in principle. However, density plots are required to make it a tad easier to interpret.
+  
+  6. If you have a small dataset, it’s sometimes useful to use geom_jitter() to see the relationship between a continuous and categorical variable. The ggbeeswarm package provides a number of methods similar to geom_jitter(). List them and briefly describe what each one does.
+
+Install the package to make sure we can look at the documentation:
+```{r install ggbeeswarm, results = 'hide'}
+install.packages("ggbeeswarm", dependencies = T, verbose = F)
+library(ggbeeswarm)
+```
+Methods listed:
+  - `geom_beeswarm`-- Points are jittered so that there are no overlapping points
+  - `geom_quasirandom`-- Points are jittered in a beeswarm but overlapping is avoided in one dimension, creating lines of dots in some cases!
+
+  2. Two categorical variables
+  
+Use `geom_count`
+```{r}
+ggplot(data = diamonds) +
+  geom_count(mapping = aes(x = cut, y = color))
+```
+
+You can do it manually with `count` and then visualize with a heatmap style:
+```{r}
+diamonds %>% 
+  count(color, cut) %>%  
+  ggplot(mapping = aes(x = color, y = cut)) +
+    geom_tile(mapping = aes(fill = n))
+```
+
+>If variables are unordered, you can use `seriation` package to reorder rows and columns!
+
+####Exercises 7.5.2
+  1. How could you rescale the count dataset above to more clearly show the distribution of cut within colour, or colour within cut?
+
+You could do the proportion of totals! To do this, you need to remember that the counts are called "n".
+```{r proportions by grouping}
+#get the data
+(colorcut <- diamonds %>%
+  count(color, cut) %>%
+  group_by(color) %>%
+  mutate(proportion = n / sum(n)))
+#plot the data
+ggplot(data = colorcut, mapping = aes(x = color, y = cut)) +
+  geom_tile(mapping = aes(fill = proportion))
+```
+
+>Boom! we can see that ideal cut G color is the highest proportion here.
+
+  2. Use geom_tile() together with dplyr to explore how average flight delays vary by destination and month of year. What makes the plot difficult to read? How could you improve it?
+
+```{r}
+flights %>%
+  group_by(dest, month, year) %>%
+  summarise(mean_dep_delay = mean(dep_delay)) %>%
+  ggplot(mapping = aes(x = month, y = dest)) +
+  geom_tile(mapping = aes(fill = mean_dep_delay))
+```
+
+Wow there are a lot of NA values messing with this (some dest have NA for a particular month)... so why not remove them?
+
+```{r}
+flights %>%
+  group_by(dest, month, year) %>%
+  summarise(mean_dep_delay = mean(dep_delay, na.rm = T)) %>%
+  filter(!is.na(mean_dep_delay)) %>%
+  ggplot(mapping = aes(x = month, y = dest)) +
+  geom_tile(mapping = aes(fill = mean_dep_delay))
+```
+
+>That looks better!
+
+  3. Why is it slightly better to use aes(x = color, y = cut) rather than aes(x = cut, y = color) in the example above?
+  
+This is what option 2 looks like:
+```{r}
+diamonds %>% 
+  count(color, cut) %>%  
+  ggplot(mapping = aes(y = color, x = cut)) +
+    geom_tile(mapping = aes(fill = n))
+```
+
+>Cut has a logical order for categories. What the heck does D vs J color mean to the layperson?! If we have the X axis in a continuum, that seems better! So stick to the original.
+
+  3. Two continuous variables
+
+Scatterplots!
+```{r}
+ggplot(data = diamonds) +
+  geom_point(mapping = aes(x = carat, y = price))
+```
+
+For big datasets, it can get hard to see... you can set transparency with `alpha` to fix this:
+
+```{r}
+ggplot(data = diamonds) + 
+  geom_point(mapping = aes(x = carat, y = price), alpha = 1 / 100)
+```
+
+Another solution is to use 2D binning!
+```{r}
+ggplot(data = smaller) +
+  geom_bin2d(mapping = aes(x = carat, y = price))
+
+install.packages("hexbin")
+library(hexbin)
+ggplot(data = smaller) +
+  geom_hex(mapping = aes(x = carat, y = price))
+```
+
+Or... we can group/bin our continuous vars to look like categorical ones:
+
+```{r}
+ggplot(data = smaller, mapping = aes(x = carat, y = price)) + 
+  geom_boxplot(mapping = aes(group = cut_width(carat, 0.1)))
+```
+
+We can also set `varwidth = TRUE` to show sample size for each group.
+```{r}
+ggplot(data = smaller, mapping = aes(x = carat, y = price)) + 
+  geom_boxplot(mapping = aes(group = cut_width(carat, 0.1)), varwidth = TRUE)
+```
+
+We can also set the bin values to include similar sample sizes:
+```{r}
+ggplot(data = smaller, mapping = aes(x = carat, y = price)) + 
+  geom_boxplot(mapping = aes(group = cut_number(carat, 20)))
+```
+
+####Exercises 7.5.3
+  1. Instead of summarising the conditional distribution with a boxplot, you could use a frequency polygon. What do you need to consider when using cut_width() vs cut_number()? How does that impact a visualisation of the 2d distribution of carat and price?
+  
+I donnu, let's try it?
+```{r}
+ggplot(data = diamonds) + 
+  geom_freqpoly(mapping = aes(x = price, y= ..density.., color = cut_width(carat, 0.5)), binwidth = 500)
+ggplot(data = diamonds) + 
+  geom_freqpoly(mapping = aes(x = price, y= ..density.., color = cut_number(carat, 10)), binwidth = 500)
+```
+
+So it is clear to me that when using either, you need to be cognizant of the bin sizes and number of unique groups you will get when separating out the data. Sometimes it will look janky, because you paritioned things too much or too little. Again, this can confuse patterns in the data visualisation, making interpretation difficult.
+
+
+  2. Visualise the distribution of carat, partitioned by price.
+  
+```{r}
+library(hexbin)
+ggplot(data = diamonds) +
+  geom_hex(mapping = aes(y = carat, x = price))
+ggplot(data = diamonds, mapping = aes(x = price, y = carat)) + 
+  geom_boxplot(mapping = aes(group = cut_width(price, 1000)), varwidth = TRUE)
+```
+
+>We have two types of plots:
+  - the hexplot, which bins in both directions.
+  - the boxplots, which bins the prices by 1000 increments with scaling of boxplots to the sample size!
+  
+  3. How does the price distribution of very large diamonds compare to small diamonds. Is it as you expect, or does it surprise you?
+
+So let's get the larger set:
+```{r larger diamonds}
+(larger <- diamonds %>% 
+  filter(carat >= 3))
+
+ggplot(data = larger, mapping = aes(x = carat, y = price)) + 
+  geom_boxplot(mapping = aes(group = cut_width(carat, 0.25)), varwidth = TRUE) +
+  ggtitle(label = "Larger Diamonds")
+
+ggplot(data = smaller, mapping = aes(x = carat, y = price)) + 
+  geom_boxplot(mapping = aes(group = cut_width(carat, 0.25)), varwidth = TRUE) +
+  ggtitle(label = "Smaller Diamonds")
+```
+
+Looking at the plots side by side, it is surprising! I expected the same trend of increasing median value for the size bins, but that is not the case. Median value for >3.5 carats dips before recovering slightly. Notably, this is a smaller dataset with only n=40.
+
+  4. Combine two of the techniques you’ve learned to visualise the combined distribution of cut, carat, and price.
+  
+```{r}
+library(hexbin)
+diamonds %>%
+  group_by(cut) %>%
+ggplot(mapping = aes(x = carat, y = price)) +
+  geom_hex(mapping = aes(fill = cut), alpha = 0.5)
+
+library(viridis)
+diamonds %>%
+  group_by(cut) %>%
+ggplot() +
+  geom_hex(mapping = aes(y = carat, x = price)) +
+  facet_grid(facets = cut ~ ., as.table = T) +
+  scale_fill_viridis(end = 0.85, direction = -1) +
+  xlim(c(min(diamonds$price),max(diamonds$price))) +
+  ylim(c(min(diamonds$carat), max(diamonds$carat)))
+```
+  5. Two dimensional plots reveal outliers that are not visible in one dimensional plots. For example, some points in the plot below have an unusual combination of x and y values, which makes the points outliers even though their x and y values appear normal when examined separately.
+
+```{r data}
+ggplot(data = diamonds) +
+  geom_point(mapping = aes(x = x, y = y)) +
+  coord_cartesian(xlim = c(4, 11), ylim = c(4, 11))
+```
+
+Why is a scatterplot a better display than a binned plot for this case?
+
+> A binned plot would likely hide some of these outliers by grouping them more tightly with the rest of the distribution. For boxplots, they would need to fall well outside the data, whereas binning would lead to them appearing less severe of outliers.
+
+###Section 7.6
+####Patterns and Models
+Remove the carats and price relationship with a linear model and plot residuals:
+```{r}
+library(modelr)
+
+mod <- lm(log(price) ~ log(carat), data = diamonds)
+
+diamonds2 <- diamonds %>% 
+  add_residuals(mod) %>% 
+  mutate(resid = exp(resid))
+
+ggplot(data = diamonds2) + 
+  geom_point(mapping = aes(x = carat, y = resid))
+
+ggplot(data = diamonds2) + 
+  geom_boxplot(mapping = aes(x = cut, y = resid))
+```
+
+Now we can see the cut relationship that we expected!
+
+###Section 7.7
+####Ggplot2 Calls
+We are now going to drop some of the supporting argument calls, like `data`, `mapping`, `x`, `y`, etc. for `ggplot()` and `aes()`.
+
+We will also pipe in to plot data (use `%>%` prior to `ggplot()`).
+
+-----
+
+##Chapter 8
+Reference this to use rstudio projects!
+
+###Section 8.1
+Command + Shift + F10 restarts R
+
+-----
+
+##Chapter 9
+Tidying Data Intro
+
+-----
+
+##Chapter 10
+
+###Section 10.1
+####Introduction to Tibbles
+**Tibbles** are just a newer type of data frame that does not break the R base code! We use the `tidyverse` package to access the `tibble` package. I have already loaded the package in the setup chunk, but the chunk below would work as well.
+
+```{r load tidyverse, eval = F}
+library(tidyverse)
+```
+
+###Section 10.2
+####Creating Tibbles
+You can convert regular dataframes to `tibble`s by using `as_tibble()`.
+```{r}
+as_tibble(iris)
+```
+
+You can also create a new tibble from vector data with `tibble()`. Tibbles do a bunch of nice things that data.frames do not:
+  - does not create row names
+  - can use typically illegal (non-syntactic) col names
+  - doesn't change strings to factors sometimes
+  - will not change variable names
+  
+```{r}
+tibble(
+  x = 1:5, 
+  y = 1, 
+  z = x ^ 2 + y
+)
+```
+
+To use the typically illegal names, you have to use backticks (\`). This convention will work in other `tidyverse` packages.
+
+```{r}
+tb <- tibble(
+  `:)` = "smile", 
+  ` ` = "space",
+  `2000` = "number"
+)
+tb
+```
+
+You can also use transposable tibbles with `tribble()`. To do so, you have to enter column headings as formulas and elements are separated by commas.
+```{r}
+tribble(
+  ~x, ~y, ~z,
+  #--|--|---- this commenting shows where the header is
+  "a", 2, 3.6,
+  "b", 1, 8.5
+)
+```
+
+###Section 10.3
+####Tibbles vs data.frame
+
+Two main differences:
+  1. printing
+  2. subsetting
+
+Tibbles only print the first 10 rows and cols in the width of the window. They also include the class of each col.
+
+```{r}
+  tibble(
+  a = lubridate::now() + runif(1e3) * 86400,
+  b = lubridate::today() + runif(1e3) * 30,
+  c = 1:1e3,
+  d = runif(1e3),
+  e = sample(letters, 1e3, replace = TRUE)
+)
+```
+
+You can manually change this to view all of a tibble though! Using `print()`, you can set the number of rows with `n=` and number of cols with `width=` (note: `width = Inf` gets all cols printed).
+
+```{r}
+nycflights13::flights %>% 
+  print(n = 10, width = Inf)
+```
+
+You can change the default behavior of tibbles with: `options(tibble.print_max = n, tibble.print_min = m)`. Replace n and m with the values you want. To print all rows, use `options(dplyr.print_min = Inf)`.
+
+To subset, you can use `$` or `[[]]`. The former uses name only, while the latter can use col number and name.
+
+```{r}
+df <- tibble(
+  x = runif(5),
+  y = rnorm(5)
+)
+
+# Extract by name
+df$x
+df[["x"]]
+
+# Extract by position
+df[[1]]
+```
+
+  >To use in a pipe, you have to use a special character placeholder for the object to subset: `.$`
+
+```{r}
+df %>% .$x
+df %>% .[["x"]]
+```
+
+  >Some older functions do not work with tibbles. use `as.data.frame()` to make it a dataframe again.
+  
+The ambiguity of `[]` return object is what gets problematic! Tibbles will always return tibbles!
+
+####Exercises 10.5
+  1. How can you tell if an object is a tibble? (Hint: try printing mtcars, which is a regular data frame).
+  
+Tibbles will always say they are a tibble and specify the dimensions as a comment at the top of the printed output! *Regular data frames do not do this.*
+
+  2. Compare and contrast the following operations on a data.frame and equivalent tibble. What is different? Why might the default data frame behaviours cause you frustration?
+  
+```{r tibble vs data.frame, eval=F}
+  df <- data.frame(abc = 1, xyz = "a")
+  df$x
+  df[, "xyz"]
+  df[, c("abc", "xyz")]
+```
+
+Try this with the default dataframe:
+```{r tibble vs data.frame: regular}
+  df <- data.frame(abc = 1, xyz = "a")
+  names(df)
+  df$x
+  df[, "xyz"]
+  df[, c("abc", "xyz")]
+```
+
+Now try with a tibble:
+```{r tibble vs data.frame: tibble}
+  df <- as_tibble(data.frame(abc = 1, xyz = "a"))
+  df$x
+  df[, "xyz"]
+  df[, c("abc", "xyz")]
+```
+
+  >We can see that the default data frame method manages to return a value for subsetting by `x`, which is not a col name (`xyz` is). The tibble method does not do this (kicks back an error), which makes it more robust, even though they perform the same for simple cases of subsetting!
+  
+  3. If you have the name of a variable stored in an object, e.g. var <- "mpg", how can you extract the reference variable from a tibble?
+  
+  If you do not know that the variable is named "mpg", you can use the command `names()` to determine that `mpg` is a part of the `df` tibble. From there, you can use either of the subsetting methods to call the subset. You can call the subset on it's own with the `$` or `[[]]` notation or pipe in with a `.` in front of the `$` or `[[]]`, which you use normally as below.
+```{r}
+df <- as_tibble(data.frame(abc = 1, xyz = "a", mpg = seq(0,50,5)))
+#get names
+names(df)
+#reference mpg
+df$mpg
+df[["mpg"]]
+#filter to just have mpg
+df %>%
+  .[["mpg"]]
+df %>%
+  .$mpg
+```
+
+  4. Practice referring to non-syntactic names in the following data frame by:
+  
+```{r object annoying}
+annoying <- tibble(
+  `1` = 1:10,
+  `2` = `1` * 2 + rnorm(length(`1`))
+)
+```
+   
+  - Extracting the variable called 1.
+
+```{r pull just 1}
+  annoying$`1`
+  annoying[["1"]] #not using the same character to pull
+```
+ 
+  - Plotting a scatterplot of 1 vs 2.
+  
+```{r plot cols of annoying}
+ggplot(data = annoying) +
+  geom_point(mapping = aes(x = `1`, y = `2`))
+```
+  
+  - Creating a new column called 3 which is 2 divided by 1.
+  
+```{r create a 3rd col}
+  annoying <- annoying %>%
+    mutate(`3` = `2`/`1`)
+```
+  
+  - Renaming the columns to one, two and three.
+
+```{r rename cols of annoying}
+#change names to character version
+  names(annoying) <- c("one", "two", "three")
+  annoying
+#we can change the names back with `rename()`
+  (annoying %>%
+    rename(., `1` = one, `2` = two, `3` = three))
+```
+
+  > **`rename()`** works with where you call the object in a pipe with a `.` and then list out the new name equals the old name (e.g., ``1``=one).
+  
+  5. What does tibble::enframe() do? When might you use it?
+  
+`tibble::enframe()` converts a vector to a tibble dataframe, which includes a column of the names of the vector elements (defaults to the values if no names exist) and a column of the values. The arguments `name` and `value` can be used to set names for the new cols. You may use it when you want to turn a vector into a tibble... I am not certain *exactly* when you would want to beyond that, but I am sure there are even more specific conditions.
+
+  6. What option controls how many additional column names are printed at the footer of a tibble?
+  
+`options(tibble.max_extra_cols = n)` will change the number (n) of extra variable (col) names that are printed in the footer of tibbles! You can use `tibble-options` to learn more in the help search.
+
+-----
+
+##Chapter 11
+ 
+###Section 11.1
+####Data Import Introduction
+
+This chapter will focus on using *your own* data, rather than pre-loaded data in R packages. We will need the `readr` package, which belongs to the `tidyverse` package group.
+
+###Section 11.2
+####Getting Started
+
+`readr` has a bunch of functions that turn flat data into data frames:
+  - `read_csv()` reads comma separated files
+  - `read_csv2()` reads semicolon separated files
+  - `read_tsv()` reads tab separated files
+  - `read_delim()` reads files with any sort of delimiter (you just need to specify the delimiter in the `delim =` argument)
+  - `read_fwf()` reads fixed width files (set by `fwf_widths()` or `fwf_positions()`)
+  - `read_table()` reads a typical version of fixed width files by recognizing white space separation
+  - `read_log()` reads apache style log files
+  
+Here is an example with `read_csv()`:
+```{r reading csv, eval=F}
+heights <- read_csv("data/heights.csv")
+```
+
+Note that the cols will be printed with their name and class.
+
+You can also do inline CSV files:
+```{r}
+read_csv("a,b,c
+         1,2,3
+         4,5,6")
+```
+
+The first line consists of the colnames separated by commas. There are some cases where you may want to modify this behavior:
+  1. Metadata at the top of a file. Use `skip = n` to avoid reading those lines or `comment = "#"` to drop all lines that start with `#` (or another character of your choosing).
+```{r}
+read_csv("The first line of metadata
+  The second line of metadata
+  x,y,z
+  1,2,3", skip = 2)
+read_csv("# A comment I want to skip
+  x,y,z
+  1,2,3", comment = "#")
+```
+
+  2. A file without colnames. Set `col_names = FALSE` to not read in the first row of values and label each col with X1, X2, etc.
+```{r}
+  read_csv("1,2,3\n4,5,6", col_names = FALSE)
+```
+
+  >NOTE: `\n` will create a new line in a string.
+  
+You can also set colnames with the `colnames =` parameter too with a concatenated list of strings. Of note, you can set what values should be considered `NA` with `na=` (e.g., `na=.` will set periods to `<NA>`).
+  
+###Exercises 11.2.2
+  1. What function would you use to read a file where fields were separated with “|”?
+  
+You would use `read_delim()` and would set `delim = "|"` as a parameter.
+
+  2. Apart from file, skip, and comment, what other arguments do read_csv() and read_tsv() have in common?
+  
+They contain the following same arguments:
+
+  - col_names
+  - col_types
+  - locale: controls default time zone, decimal, dates, etc.
+  - na
+  - quoted_na: treat missing values inside quotes as NA?
+  - quote
+  - trim_ws: should leading and trailing whitespace be trimmed
+  - n_max: max number of records to read
+  - guess_max: max number of records to use to guess col type
+  - progress: show progress bar?
+  
+  3. What are the most important arguments to read_fwf()?
+  
+Aside from specifying the `file`, setting the `col_positions` or `col_types` are probably the most important. Specifically, `col_positions` links to `fwf_widths` or `fwf_positions`, which help dictate how to read and parse (separate) the file to be a dataframe.
+
+  4. Sometimes strings in a CSV file contain commas. To prevent them from causing problems they need to be surrounded by a quoting character, like " or '. By convention, read_csv() assumes that the quoting character will be ", and if you want to change it you’ll need to use read_delim() instead. What arguments do you need to specify to read the following text into a data frame?
+
+  `"x,y\n1,'a,b'"`
+  
+This is what it looks like as a `read_csv` without any edits:
+```{r try with read_csv}
+read_csv("x,y\n1,'a,b'")
+```
+
+Now let's use `read_delim` to bypass this problem:
+```{r try with read_delim}
+read_delim(file = "x,y\n1,'a,b'", quote = "\'", delim = ",")
+```
+
+>We need to use the `quote="\'"` parameter setting to bypass the single quotes problem! We also need to make sure we specify `file =` and `delim =` as usual too.
+
+  5. Identify what is wrong with each of the following inline CSV files. What happens when you run the code?
+  
+```{r}
+read_csv("a,b\n1,2,3\n4,5,6")
+```
+
+>When you run this code, you lose your third elements, because you have not specified a third col or set up elements/observations in a 3x2 format.
+
+```{r}
+read_csv("a,b,c\n1,2\n1,2,3,4")
+```
+
+>This command has set a new line with `\n` one number too early or lacks even observations relative to the names of columns. Because of this, `NA` is entered for the third element of the first row and the fourth observation is dropped from the table.
+
+```{r}
+read_csv("a,b\n\"1")
+```
+
+>This command has an extra backslash `\` after the `\n` and lacks another observation to add in the data frame, relative to the number of colnames. When executed, it produces a tibble dataframe that has an `NA` for the observation under col `b`.
+
+```{r}
+read_csv("a,b\n1,2\na,b")
+```
+
+>The "error" per se depends entirely on the goal of the code. In one sense, both cols are treated as characters, since they contain letters and numbers (produces a row of 1,2 and a row of a,b). If the intention was to keep a col of integers and characters, then the syntax needs to change to contain one observation set per row (one integer, one character). Additionally, if there was any intention to include `NA`s, they were not marked clearly either.
+
+```{r}
+read_csv("a;b\n1;3")
+```
+
+>This code uses semicolons to separate data, which is supported by `read_csv2()` not `read_csv()`. The code produces a single element with the name "a;b" and the observation "1;3" as a character.
+
+###Section 11.3
+####Parsing a vector
+
+`parse_*()` functions turn vectors into more specific classes.
+
+```{r}
+str(parse_logical(c("TRUE", "FALSE", "NA")))
+str(parse_integer(c("1", "2", "3")))
+str(parse_date(c("2010-01-01", "1979-10-14")))
+```
+
+These functions all follow the same form: start with a character vector, then specify what `NA` values should be.
+
+```{R}
+parse_integer(c("1", "231", ".", "456"), na = ".")
+```
+
+If parsing fails, you get warnings:
+```{r}
+x <- parse_integer(c("123", "345", "abc", "123.45"))
+```
+
+You will still get your object, but there will also be a "problems" attribute and the problem data will be converted to `NA`. If the problems is too long, you can use `problems()` to get the full list as a tibble.
+
+Here are the __eight most important `parse_*()` functions:__
+
+  1. `parse_logical()`: T/F factors
+  2. `parse_integer()`: whole number integers
+  3. `parse_double()`: strict numeric parameter
+  4. `parse_number()`: more flexibly numeric parameter
+  5. `parse_character()`: characters! beware of character encodings
+  6. `parse_datetime()`: date and time
+  7. `parse_data()`: just date
+  8. `parse_time()`: just time
+  
+Notes on specific parse functions:
+
+A. Numeric
+
+  1. Take care of use of number grouping, such as \, or \. in different parts of the world.
+  2. Beware of characters around numbers like \% and \$
+  
+A way to deal with this is to set the locale with `locale()`
+
+```{r}
+parse_double("1.23")
+parse_double("1,23", locale = locale(decimal_mark = ","))
+```
+
+You can guess your OS' measurement system, but `parse_number()` is flexible enough to handle these problems:
+
+```{r}
+parse_number("$100")
+parse_number("20%")
+parse_number("It cost $123.45")
+```
+
+Comma grouping can be dealt with via both functions
+```{r}
+#Used in America
+parse_number("$123,456,789")
+
+# Used in many parts of Europe
+parse_number("123.456.789", locale = locale(grouping_mark = "."))
+
+# Used in Switzerland
+parse_number("123'456'789", locale = locale(grouping_mark = "'"))
+```
+
+B. Strings
+
+How are strings understood in a computer? Use `charToRaw()`
+
+```{r my name}
+charToRaw("Huron")
+```
+
+So each character is represented by a hexadecimal, such that each is a single byte. The code is in ASCII, which works well for English! However, or tricky characters, it helps to know the encoding (default for `readr` is UTF-8):
+
+```{r}
+x1 <- "El Ni\xf1o was particularly bad this year"
+x2 <- "\x82\xb1\x82\xf1\x82\xc9\x82\xbf\x82\xcd"
+parse_character(x1, locale = locale(encoding = "Latin1"))
+parse_character(x2, locale = locale(encoding = "Shift-JIS"))
+```
+
+If you cannot find the encoding or do not know it, you can use `guess_encoding()`
+```{r}
+guess_encoding(charToRaw(x1))
+guess_encoding(charToRaw(x2))
+```
+
+c. Factors
+
+Warnings will occur if an observation isnt in the levels set in the parse:
+```{r}
+fruit <- c("apple", "banana")
+parse_factor(c("apple", "banana", "bananana"), levels = fruit)
+```
+
+D. Date-Times, Dates, and Times
+
+`parse_datetime()` expects ISO8601 date-time (organized from largest to smallest): Year, Month, Day, Hour, Minute, Second
+
+>NOTE: If no time is added, midnight is assumed!
+
+`parse_date()` expects four digit year, a - or /, a month (two digits), another - or /, and then the day (two digits)
+
+`parse_time()` expects the hour (two digits), then :, then minutes, optional :, optional seconds, and lastly an optional am/pm
+
+>R does not have a good date/time built in, so use the `hms` package!
+
+```{r install + load hms}
+install.packages("hms", dependencies = T)
+library(hms)
+```
+
+###Exercises 11.3.5
+  1. What are the most important arguments to locale()?
+  
+The most important arguments are: 
+  - date_names
+  - decimal_mark
+  - tz
+  - encoding
+
+  2. What happens if you try and set decimal_mark and grouping_mark to the same character? What happens to the default value of grouping_mark when you set decimal_mark to “,”? What happens to the default value of decimal_mark when you set the grouping_mark to “.”?
+  
+```{r}
+#locale(decimal_mark = ".", grouping_mark = ".")
+locale(decimal_mark = ",")
+locale(grouping_mark = ".")
+```
+You get an error that says they must be different! When you set one to a particular character, the other is defaulted to the other!
+  
+  3. I didn’t discuss the date_format and time_format options to locale(). What do they do? Construct an example that shows when they might be useful.
+  
+They set what the default format is for time and date. Example with German that shows that you can convert longform to the standard form:
+```{r datetime formats}
+parse_date("10 februar 1991", "%d %B %Y", locale = locale("de"))
+```
+  
+  4. If you live outside the US, create a new locale object that encapsulates the settings for the types of file you read most commonly.
+  
+Thankfully, I do live in the U.S.
+  
+  5. What’s the difference between read_csv() and read_csv2()?
+  
+The former reads comma separated files and the latter reads semicolon separated files.
+
+  6. What are the most common encodings used in Europe? What are the most common encodings used in Asia? Do some googling to find out.
+  
+It looks like Europe uses ISO 8859 encoding, and it seems like Guobiao (GB) is used in most Asian countries. Notably, UTF-8 is used pretty universally.
+  
+  7. Generate the correct format string to parse each of the following dates and times:
+```{r prompt}
+d1 <- "January 1, 2010"
+d2 <- "2015-Mar-07"
+d3 <- "06-Jun-2017"
+d4 <- c("August 19 (2015)", "July 1 (2015)")
+d5 <- "12/30/14" # Dec 30, 2014
+t1 <- "1705"
+t2 <- "11:15:10.12 PM"
+```
+
+```{r parse}
+parse_date(d1, format = "%B %d, %Y")
+parse_date(d2, format = "%Y-%b-%d")
+parse_date(d3, format = "%d-%b-%Y")
+parse_date(d4, format = "%B %d (%Y)")
+parse_date(d5, format = "%m/%d/%y")
+parse_time(t1, format = "%H%M")
+parse_time(t2, format = "%I:%M:%OS %p")
+```
+
+###Section 11.4
+####Parsing a file
+
+`readr` uses the first 1000 rows to guess the class type of each col. Using `guess_parser()`, you can mimic this:
+```{r guess_parser}
+guess_parser("2010-10-01")
+guess_parser("15:01")
+guess_parser(c("TRUE", "FALSE"))
+guess_parser(c("1", "5", "9"))
+guess_parser(c("12,352,561"))
+str(parse_guess("2010-10-10"))
+```
+
+>When nothing else fits, the heuristic defaults to a character string!
+
+NA's might screw this up if they are present in high numbers in the first 1000 rows. Special cases in the first 1000 rows might do the same.
+
+```{r failed parse example}
+challenge <- read_csv(readr_example("challenge.csv"))
+problems(challenge)
+```
+
+To fix this, we can go col by col to get at the problem, changing the col class type as required (changed `cols()` for `x`:
+
+```{r fix col}
+challenge <- read_csv(
+  readr_example("challenge.csv"), 
+  col_types = cols(
+    x = col_double(),
+    y = col_date()
+  )
+)
+head(challenge)
+tail(challenge)
+```
+
+>It is worth reading all cols as characters sometimes to avoid problems... you can always use `type_convert()` to see what would work
+
+###Section 11.5
+####Writing objects
+
+I am going to be lazy here, since this is something I am already familar with!
+
+`write_tsv()`
+`write_csv()`
+`write_excel_csv()` works for excel!!!
+`write_rds()` and `read_rds()` work for saving the r data in the RDS binary format
+the `feather` package seems to work similarly to RDS, but faster?
+
+-----
+
+##Chapter 12
