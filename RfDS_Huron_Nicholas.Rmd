@@ -1267,3 +1267,268 @@ the `feather` package seems to work similarly to RDS, but faster?
 -----
 
 ##Chapter 12
+
+###Section 12.1
+####Intro to Tidying Data
+
+**Tidying** data is formatting it in a consistent way. Hilarious parallel quote by the way, Hadley Whickham. *Slow claps* With **tidy** data, you do less *data munging*, or taking data from one form to another.
+
+###Section 12.2
+####What is tidy data?
+
+The *three* rules for a tidy dataset are:
+
+  1. Each variable must have its own column.
+  2. Each observation must have its own row.
+  3. Each value must have its own cell.
+
+###Exercises 12.2.1
+  1. Using prose, describe how the variables and observations are organised in each of the sample tables.
+    
+    - `table1`: is organized in a tidy tibble! Each column contains variables (country, year, cases, population), and each row is a single set of unique values for those four variables with no separation of a single observation across multiple rows.
+    - `table2`: is separated into a similar form as the prior table, but cases and population are separated by row, inherently splitting the prior row convention. Thus, type dictates cases or population and count is the number for the type. Each year and country pairing are on two rows.
+    - `table3`: also follows the first table convention but combines cases and population into a single variable, rate (the former divided by the latter).
+    - `table4a`: separates the data into one table of just cases. The first col is countries and the next two are specific years, 1999 and 2000. Case values that fit that country and year are entered as elements for corresponding spot.
+    - `table4b`: is the same as the prior table but for populations.
+  
+  2. Compute the rate for table2, and table4a + table4b. You will need to perform four operations:
+  
+    1. Extract the number of TB cases per country per year.
+    2. Extract the matching population per country per year.
+    3. Divide cases by population, and multiply by 10000.
+    4. Store back in the appropriate place.
+
+Which representation is easiest to work with? Which is hardest? Why?
+
+table2:
+```{r get rates table2}
+tbcases <- table2 %>%
+  filter(type == "cases")
+pops <- table2 %>%
+  filter(type == "population")
+tbrate <- tbcases %>%
+  mutate(rate = ((.$count/pops$count)*1e4)) %>%
+  select(country, year, rate) %>%
+  bind_cols(., tbcases, pops) %>%
+  select(country, year, cases = count, population = count1, rate)
+```
+
+table4a and b:
+```{r get rates table4a and b}
+tbcases <- table4a %>%
+  select(`1999`, `2000`) %>%
+  unlist(.) %>%
+  unname(.)
+pops <- table4b %>%
+  select(`1999`, `2000`) %>%
+  unlist(.) %>%
+  unname(.)
+rate <- ((tbcases/pops)*1e4)
+tbrate <- as_tibble(cbind(country = table4a$country, year = colnames(table4a)[-1], cases = tbcases, population = pops, rate= rate))
+```
+
+Quite frankly, they are both awful to work with. The table4 grouping is awful, as it requires some serious datatype and function mixing (I used `as_tibble()` with `cbind()`).
+
+  3. Recreate the plot showing change in cases over time using table2 instead of table1. What do you need to do first?
+  
+You have to isolate cases or reconvert table2 to be like table1
+
+```{r}
+tidyr::table2 %>%
+  filter(type == "cases") %>%
+ggplot(., aes(year, count)) + 
+  geom_line(aes(group = country), colour = "grey50") + 
+  geom_point(aes(colour = country))
+```
+
+###Section 12.3
+####Spreading and Gathering
+
+`gather()` will help us collect multiple cols into new variables:
+```{r gather}
+tidyr::table4a %>% 
+  gather(`1999`, `2000`, key = "year", value = "cases")
+```
+
+With `gather()`, keep the following in mind:
+
+  - data parameters are the cols with the combined data
+  - key parameter is the name for the combined col of the data parameters
+  - value parameter is the name for the values of the elements the cols to be combined contain
+
+We can do the same for the other `table4b` and then join the results with `left_join()`:
+```{r}
+tidy4a <- table4a %>% 
+  gather(`1999`, `2000`, key = "year", value = "cases")
+tidy4b <- table4b %>% 
+  gather(`1999`, `2000`, key = "year", value = "population")
+left_join(tidy4a, tidy4b)
+```
+
+`spread()` does the opposite of `gather()`:
+```{r spread}
+tidyr::spread(tidyr::table2, key = type, value = count)
+```
+
+Like `gather()`, `spread()` uses the same parameters, they just mean something else slightly:
+
+  - the key variable is the col name that classifies the new cols (gives the names)
+  - the value variable is the set of elements to be placed in the new cols
+
+###Exercises 12.3.3
+  1. Why are gather() and spread() not perfectly symmetrical?
+  
+```{r}
+stocks <- tibble(
+  year   = c(2015, 2015, 2016, 2016),
+  half  = c(   1,    2,     1,    2),
+  return = c(1.88, 0.59, 0.92, 0.17)
+)
+stocks %>% 
+  spread(year, return) %>% 
+  gather("year", "return", `2015`:`2016`)
+```
+
+It looks like spread in this case moves to strictly numeric data but then in the gather step, the years are converted to character because they were previously colnames!
+
+  Both spread() and gather() have a convert argument. What does it do?
+
+The `gather()` version will automatically try to correct the error above! The `spread()` version is the source of this error that prevents loss of data?
+
+  2. Why does this code fail?
+```{r code fail}
+table4a %>% 
+  gather(1999, 2000, key = "year", value = "cases")
+```
+The nonsyntactic characters are not dealt with correctly! They need tick marks.
+
+  3. Why does spreading this tibble fail? How could you add a new column to fix the problem?
+```{r tibble fail}
+people <- tribble(
+  ~name,             ~key,    ~value,
+  #-----------------|--------|------
+  "Phillip Woods",   "age",       45,
+  "Phillip Woods",   "height",   186,
+  "Phillip Woods",   "age",       50,
+  "Jessica Cordero", "age",       37,
+  "Jessica Cordero", "height",   156
+)
+
+spread(people, key = key, value = value)
+```
+
+The tibble spread fails, because there is an individual with two age measurements. We can add a temporal series within individual column so that the rows become unique.
+
+  4. Tidy the simple tibble below. Do you need to spread or gather it? What are the variables?
+```{r tidy some data}
+preg <- tribble(
+  ~pregnant, ~male, ~female,
+  "yes",     NA,    10,
+  "no",      20,    12
+)
+
+preg %>%
+  gather(c(male, female), key = "sex", value = "count")
+```
+
+This data was hard to interpret initially, but then I realized it was a table of pregnancy by sex for a surveyed group. Since we specify the data, we can just give a name for the `value` parameter of something like n or counts.
+
+###Section 12.4
+####Separating and Uniting
+
+`separate()` will take values from elements in an object and pull them apart. The default is to find the non-alphanumeric chracters in the element and split them accordingly.
+
+```{r separate example}
+table3 %>% 
+  separate(rate, into = c("cases", "population"))
+```
+
+That being said, you can split by specific characters, using regular expressions or by position (if numeric values is used). Positive values will find position from the left, and negative values will do the same from the right. Additionally, the `convert = TRUE` argument will convert the col types for the newly created cols.
+```{r separate example with / and numeric}
+table3 %>% 
+  separate(rate, into = c("cases", "population"), sep = "/", convert = TRUE)
+#numeric example
+table3 %>% 
+  separate(year, into = c("century", "year"), sep = 2)
+```
+
+`unite()` is the converse of `separate()`, and thus combines values from multiple cols into a sinle new one.
+```{r unite example}
+tidyr::table5 %>% 
+  unite(new, century, year)
+```
+
+There is also a `sep =` argument for `unite()`, which by default is an underscore `_`.
+```{r unite example v2}
+tidyr::table5 %>% 
+  unite(new, century, year, sep = "")
+```
+
+###Exercises 12.4.3
+  1. What do the extra and fill arguments do in separate()? Experiment with the various options for the following two toy datasets.
+```{r}
+tibble(x = c("a,b,c", "d,e,f,g", "h,i,j")) %>% 
+  separate(x, c("one", "two", "three"))
+
+tibble(x = c("a,b,c", "d,e", "f,g,i")) %>% 
+  separate(x, c("one", "two", "three"))
+```
+
+`extra=` will handle extra characters accordingly. You can set to `"warn"`, `"drop"`, and `"merge"`. `fill=` deals with not enough elements, and has the following options: `"warn"`, `"right"`, and `"left"`. The left and right will fill missing values on that side. *Note that the `data=` must be a dataframe!*
+```{r show 'em examples}
+dummy <- tibble(x = c("a,b,c", "d,e,f,g", "h,i,j"))
+
+dummy %>%
+  separate(x, c("one", "two", "three"), extra = "warn")
+dummy %>%
+  separate(x, c("one", "two", "three"), extra = "drop")
+dummy %>%
+  separate(x, c("one", "two", "three"), extra = "merge")
+
+```
+
+>So we see that `"warn"` and `"drop"` do the same thing functionally, but the former adds the warning message.
+
+```{r show 'em examples for fill}
+dummy <- tibble(x = c("a,b,c", "d,e", "f,g,i"))
+
+dummy %>% 
+  separate(x, c("one", "two", "three"), fill = "warn")
+dummy %>% 
+  separate(x, c("one", "two", "three"), fill = "left")
+dummy %>% 
+  separate(x, c("one", "two", "three"), fill = "right")
+```
+
+>Now in this case, we can see that `"warn"` and `"right"` behave similarly in function. Notably, the `NA` is in the first col for `"left"`.
+
+  2. Both unite() and separate() have a remove argument. What does it do? Why would you set it to FALSE?
+  
+In both cases, `remove = TRUE` is the default parameter setting and removes  the input column from the output data frame. This is helpful, because typically, you do not want the original column, as it contains aberrant versions of data. However, if you want to check that the function performed as expected, you might set it to `FALSE` to be sure before re-running with `TRUE`.
+
+  3. Compare and contrast separate() and extract(). Why are there three variations of separation (by position, by separator, and with groups), but only one unite?
+  
+So `extract()` will group new cols by a regular expression according to the number of new cols. `separate()` will only use a single regex to separate by. Notably, there are three different ways to separate data, but only one for unite, as there are many ways to partition a col, but really only one way to combine multiples into a single col.
+
+###Section 12.5
+####Missing Values
+
+Data can be treated as missing in two ways:
+  1. **Explicit**: specifically treated as `NA`-- "presence of an absence"
+  2. **Implicit**: just missing from the dataset-- "absence of a presence"
+  
+We can use data spreading with a default to fill implied missing values with `NA` with `fill = NA` (with `spread()`). Conversely, when trying to get data read in or combined, you can use `na.rm = TRUE` to drop explicit missing data (with `gather()`).
+
+Notably, `complete()` can help with missing values too to get implicit ones represented explicitly:
+```{r complete example}
+stocks <- tibble(
+  year   = c(2015, 2015, 2015, 2015, 2016, 2016, 2016),
+  qtr    = c(   1,    2,    3,    4,    2,    3,    4),
+  return = c(1.88, 0.59, 0.35,   NA, 0.92, 0.17, 2.66)
+)
+
+stocks %>%
+  complete(year, qtr)
+```
+
+Now w
