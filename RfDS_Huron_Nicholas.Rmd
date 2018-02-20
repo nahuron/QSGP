@@ -701,6 +701,379 @@ ggplot(data = <DATA>) +
 
 ##Chapter 4
 
+###Section 4.1
+
+some great humor in this chapter
+
+summary: you can do cool stuff with r (use as a calc, assign objects), do not be a jerk/code cleanly
+
+###Section 4.2
+
+code meticulously and name with conventions, lest ye be one who likes to see the world burn
+
+###Section 4.3
+
+functions!
+surround assignments with () to show values at once
+
+###Section 4.4
+
+  1. 
+```{r}
+my_variable <- 10
+my_varıable
+```
+
+#> Error in eval(expr, envir, enclos): object 'my_varıable' not found
+
+this code does not work, because the i is dotted in the assignment and not dotted in the call for the variable to see what it contains
+
+  2. tweak each of the commands so that they work
+
+this library call seems fine...
+```{r}
+library(tidyverse)
+```
+```{r, eval=FALSE}
+ggplot(dota = mpg) + 
+  geom_point(mapping = aes(x = displ, y = hwy))
+#to
+ggplot(data = mpg) +
+  geom_point(mapping = aes(x = displ, y = hwy))
+```
+
+```{r, eval = FALSE}
+fliter(mpg, cyl = 8)
+filter(diamond, carat > 3)
+#to
+filter(mpg, cyl == 8)
+filter(diamonds, carat > 3)
+```
+
+  3. 
+
+alt+shift+k gives you a screen of shortcuts in rstudio! You can get to via dropdowns (Help -> Keyboard Shortcuts Help)
+
+-----
+
+##Chapter 5
+
+###Section 5.1
+
+We are now using the `nycflights13` package and dataset `flights`
+
+###Section 5.2
+
+using filter to subset the data according to values
+```{r}
+filter(.data = flights, month==1, day==1)
+```
+
+save the filtered subset in a new object
+```{r}
+jan1 <- filter(flights, month==1, day==1)
+```
+
+put the same command in () to assign to object AND still print
+```{r}
+(jan1 <- filter(flights, month==1, day==1))
+```
+
+floating point numbers make some logical statements not work
+should be TRUE but are FALSE
+```{r}
+sqrt(2) ^ 2 == 2
+
+1/49 * 49 == 1
+```
+
+this is because computers use estimates of numbers rather than infinite continous values
+so use near command to get there instead
+```{r}
+near(sqrt(2)^2, 2)
+near(1/49*49, 1)
+```
+
+these now return TRUE
+
+logical operators
+  - & is and (intersection)
+  - ! is not
+  - | is or (union)
+  - xor( ) is everything but the intersection
+
+```{r}
+filter(flights, month == 1 | month == 12)
+```
+
+fun little note: there are longer ways to do a logical operator
+```{r}
+filter(flights, xor(month == 1, month == 12))
+filter(flights, ((month == 1  | month == 12) & !(month == 1  & month == 12)))
+```
+
+this version does not do the same as the first filter function
+```{r}
+filter(flights, month == 11 | 12)
+```
+
+the argument goes to TRUE which numerically is 1
+
+using the %in% function
+```{r}
+nov_dec <- filter(flights, month %in% c(11,12))
+```
+
+De Morgan's Law is referenced here
+```{r}
+filter(flights, !(arr_delay > 120 | dep_delay > 120))
+filter(flights, arr_delay <= 120, dep_delay <= 120)
+```
+
+filter only uses rows where conditions are true, you have to ask to keep FALSE's and NA's
+```{r}
+df <- tibble(x = c(1, NA, 3))
+filter(df, x > 1)
+```
+
+to keep NA's, call it
+```{r}
+filter(df, is.na(x) | x > 1)
+```
+
+###Exercises 5.2.4
+  1.
+  -  arrival delay >= 120 min
+```{r}
+filter(flights, arr_delay >= 120) #10200
+```
+
+  - flew to Houston (IAH or HOU)
+```{r}
+filter(flights, dest %in% c("IAH", "HOU")) #9313
+```
+
+  - operated by united, american, or delta
+```{r}
+#find the codes
+unique(flights$carrier)
+#filter
+filter(flights, carrier %in% c("AA","UA", "DL")) #139504
+```
+
+  - departed in summer (July, August, September)
+```{r}
+filter(flights, month > 6 & month < 10) #86326
+```
+
+  - arrive > 120 min late but did not depart late
+```{r}
+filter(flights, arr_delay > 120 & dep_delay <= 0) #29
+```
+
+  - delayed >= 60 min and made up over 30 min in flight (difference in initial and final delays >30)
+```{r}
+filter(flights, dep_delay >= 60 & (dep_delay - arr_delay) > 30) #1844
+```
+
+  - departed between 00:00 and 06:00 inclusive ( dep_time >= 0000 and dep_time <=0600)
+```{r}
+filter(flights, dep_time >= 0 & dep_time <= 600)  #9344
+```
+
+  2. 
+```{r}
+?between
+```
+
+this function is a shortcut for >= and <= together and is implemented in c++
+you can use it to simplify code in #1.4 and 1.7
+
+1.4
+```{r}
+filter(flights, between(month, 7, 9)) #86326 matches
+```
+
+1.7
+```{r}
+filter(flights, between(dep_time, 0, 600))  #9344 matches
+```
+
+  3. how many flights are missing dep_time? what other vars are missing in these? what might these rows represent?
+```{r}
+(nodep <- filter(flights, is.na(dep_time)))
+```
+
+There are 8255 flights without dep_time values (they have NA instead). They are all missing dep_delay, arr_time, arr_delay, and air_time as well. Some also are missing tailnum.
+```{r}
+colnames(nodep)[colSums(is.na(nodep)) > 0]
+```
+
+together, this suggests that these flights never got off the ground but rather were cancelled.
+
+  4. Why os Na^0 not missing?
+```{r}
+NA^0
+```
+
+>mathematically, any value that is raised to the power of 0 is equal to 1. Thus, even though the value is not known, the value equates to 1
+
+  Why is NA | TRUE not missing?
+```{r}
+NA | TRUE
+```
+
+>This statement is an 'or' statement. Thus, even though NA is missing, the TRUE evaluates as TRUE. Thus, the returned values is TRUE rather than missing
+
+  Why is FALSE & NA not missing?
+```{r}
+FALSE & NA
+```
+
+>The expression here is FALSE for results. If an expression is ambiguous and FALSE, it is altogether FALSE (same goes for FALSE & TRUE).
+
+  Can you figure out a general rule? NA*0 is a tricky counterexample.
+```{r}
+NA*0
+```
+>this may be an exception because infinity and -infinity are possible values in R. A quick look online suggests that `0*Inf` is undefined, which is different from `0`. Thus, there may be multiple possible solutions to `NA\0`
+
+In general, if the ambiguity of an expression containing NA can be removed to a specific certain value, R will return that as output instead of NA (missing).
+
+###Section 5.3
+
+changing a tibble's order via arrange()
+```{r}
+arrange(flights, year, month, day)
+```
+
+`desc()` can be used to do it in descending order
+
+`arrange()`
+
+>missing values are always at the end, regardless of desc
+
+###Exercises 5.3.1
+
+  1. 
+```{r}
+arrange(flights, desc(rowSums(is.na(flights))))
+#thank you stackoverflow, this sorts by the number of rows with NA values for each column
+```
+
+  2. 
+
+most delayed flights for departure
+```{r}
+arrange(flights, desc(dep_delay))
+```
+
+most delayed flights for arrival
+```{r}
+arrange(flights, desc(arr_delay))
+```
+
+maybe this will sort by total net delay...
+```{r}
+arrange(flights, desc(dep_delay+(arr_delay - dep_delay)))
+```
+
+find the flights that left the earliest
+```{r}
+arrange(flights, dep_delay)
+```
+
+  3. 
+sort flights to find the fastest flights
+if by fastest we want greatest avg velocity, we go with greatest distance/air_time
+```{r}
+arrange(flights, desc(distance/air_time))
+```
+
+shortest flight times would be
+```{r}
+arrange(flights, air_time)
+```
+
+  4. 
+
+flights that travel the longest
+```{r}
+arrange(flights, desc(distance))
+```
+
+flights that travel the shortest
+```{r}
+arrange(flights, distance)
+```
+
+###Section 5.4
+
+using select() to get only some cols
+```{r}
+select(flights, year, month, day)
+select(flights, year:day)
+```
+
+select all cols except those from year to day
+```{r}
+select(flights, -(year:day))
+```
+functions that help select()
+```{r, eval=FALSE}
+starts_with("abc")
+ends_with("xyz")
+contains("jkl")
+matches("(.)\\1") #finds vars with regex, this one is for repeating chars
+num_range("x", 1:3) #matches x1, x2, x3
+```
+
+you can rename vars with select, but rename() is easier
+```{r}
+rename(flights, tail_num = tailnum) #oddly, it doesnt seem to show on this print the first time
+```
+
+manipulating with select and everything can make moving cols easier
+```{r}
+select(flights, time_hour, air_time, everything())
+```
+
+note: it does not copy the initially selected cols in the command above
+
+###Exercises 5.4.1
+
+  1. 
+```{r}
+select(flights, dep_time, dep_delay, arr_time, arr_delay)
+select(flights, starts_with("dep_"), starts_with("arr_"))
+```
+
+I am sure there are more...
+
+  2. 
+```{r}
+select(flights, dep_time, dep_time, dep_delay)
+```
+
+It appears to not add dup columns
+
+  3. 
+```{r}
+?one_of
+vars <- c("year", "month", "day", "dep_delay", "arr_delay")
+select(flights, one_of(vars))
+```
+
+one_of appears to select the columns that in an object based on a vector of col names
+
+  4.
+```{r}
+select(flights, contains("tImE"))
+```
+
+it appears that it is not case sensitive by default. change the argument ignore.case=FALSE to be case sensitive
+
+
 
 
 -----
