@@ -8,12 +8,12 @@ output: html_document
 ```{r setup}
 #packages required
 library(tidyverse)
-library(nycflights13)
 #some global params
 knitr::opts_chunk$set(echo = T)
 #set the dir
 knitr::opts_knit$set(root.dir="/Users/nicholashuron/Google Drive/QuantSci_GP/")
 ```
+
 -----
 
 ##Chapter 10
@@ -306,7 +306,8 @@ Now there are a bunch of issues with the var names, because there is one less si
 #now visualize
 ggplot(data = whoo) +
   geom_line(mapping = aes(x = year, y = counts, color = country), show.legend = F) +
-  facet_grid(.~sex)
+  facet_grid(.~sex) +
+  ylim(0, 8e5)
 
 ```
 
