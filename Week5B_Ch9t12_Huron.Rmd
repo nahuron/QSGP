@@ -1,0 +1,313 @@
+---
+title: "Week5B_Ch9t12_Huron"
+author: "Nicholas Huron"
+date: 2018-02-20
+output: html_document
+---
+
+```{r setup}
+#packages required
+library(tidyverse)
+library(nycflights13)
+#some global params
+knitr::opts_chunk$set(echo = T)
+#set the dir
+knitr::opts_knit$set(root.dir="/Users/nicholashuron/Google Drive/QuantSci_GP/")
+```
+-----
+
+##Chapter 10
+
+###Exercises 10.5
+
+ 2. Compare and contrast the following operations on a data.frame and equivalent tibble. What is different? Why might the default data frame behaviours cause you frustration?
+  
+```{r tibble vs data.frame, eval=F}
+  df <- data.frame(abc = 1, xyz = "a")
+  df$x
+  df[, "xyz"]
+  df[, c("abc", "xyz")]
+```
+
+Try this with the default dataframe:
+```{r tibble vs data.frame: regular}
+  df <- data.frame(abc = 1, xyz = "a")
+  names(df)
+  df$x
+  df[, "xyz"]
+  df[, c("abc", "xyz")]
+```
+
+Now try with a tibble:
+```{r tibble vs data.frame: tibble}
+  df <- as_tibble(data.frame(abc = 1, xyz = "a"))
+  df$x
+  df[, "xyz"]
+  df[, c("abc", "xyz")]
+```
+
+  >We can see that the default data frame method manages to return a value for subsetting by `x`, which is not a col name (`xyz` is). The tibble method does not do this (kicks back an error), which makes it more robust, even though they perform the same for simple cases of subsetting!
+  
+  3. If you have the name of a variable stored in an object, e.g. var <- "mpg", how can you extract the reference variable from a tibble?
+  
+  If you do not know that the variable is named "mpg", you can use the command `names()` to determine that `mpg` is a part of the `df` tibble. From there, you can use either of the subsetting methods to call the subset. You can call the subset on it's own with the `$` or `[[]]` notation or pipe in with a `.` in front of the `$` or `[[]]`, which you use normally as below.
+```{r}
+df <- as_tibble(data.frame(abc = 1, xyz = "a", mpg = seq(0,50,5)))
+#get names
+names(df)
+#reference mpg
+df$mpg
+df[["mpg"]]
+#filter to just have mpg
+df %>%
+  .[["mpg"]]
+df %>%
+  .$mpg
+```
+
+  4. Practice referring to non-syntactic names in the following data frame by:
+  
+```{r object annoying}
+annoying <- tibble(
+  `1` = 1:10,
+  `2` = `1` * 2 + rnorm(length(`1`))
+)
+```
+   
+  - Extracting the variable called 1.
+
+```{r pull just 1}
+  annoying$`1`
+  annoying[["1"]] #not using the same character to pull
+```
+ 
+  - Plotting a scatterplot of 1 vs 2.
+  
+```{r plot cols of annoying}
+ggplot(data = annoying) +
+  geom_point(mapping = aes(x = `1`, y = `2`))
+```
+  
+  - Creating a new column called 3 which is 2 divided by 1.
+  
+```{r create a 3rd col}
+  annoying <- annoying %>%
+    mutate(`3` = `2`/`1`)
+```
+  
+  - Renaming the columns to one, two and three.
+
+```{r rename cols of annoying}
+#change names to character version
+  names(annoying) <- c("one", "two", "three")
+  annoying
+#we can change the names back with `rename()`
+  (annoying %>%
+    rename(., `1` = one, `2` = two, `3` = three))
+```
+
+  > **`rename()`** works with where you call the object in a pipe with a `.` and then list out the new name equals the old name (e.g., ``1``=one).
+  
+-----
+
+##Chapter 11
+
+###Exercises 11.2.2
+  1. What function would you use to read a file where fields were separated with “|”?
+  
+You would use `read_delim()` and would set `delim = "|"` as a parameter.
+
+  5. Identify what is wrong with each of the following inline CSV files. What happens when you run the code?
+  
+```{r}
+read_csv("a,b\n1,2,3\n4,5,6")
+```
+
+>When you run this code, you lose your third elements, because you have not specified a third col or set up elements/observations in a 3x2 format.
+
+```{r}
+read_csv("a,b,c\n1,2\n1,2,3,4")
+```
+
+>This command has set a new line with `\n` one number too early or lacks even observations relative to the names of columns. Because of this, `NA` is entered for the third element of the first row and the fourth observation is dropped from the table.
+
+```{r}
+read_csv("a,b\n\"1")
+```
+
+>This command has an extra backslash `\` after the `\n` and lacks another observation to add in the data frame, relative to the number of colnames. When executed, it produces a tibble dataframe that has an `NA` for the observation under col `b`.
+
+```{r}
+read_csv("a,b\n1,2\na,b")
+```
+
+>The "error" per se depends entirely on the goal of the code. In one sense, both cols are treated as characters, since they contain letters and numbers (produces a row of 1,2 and a row of a,b). If the intention was to keep a col of integers and characters, then the syntax needs to change to contain one observation set per row (one integer, one character). Additionally, if there was any intention to include `NA`s, they were not marked clearly either.
+
+```{r}
+read_csv("a;b\n1;3")
+```
+
+>This code uses semicolons to separate data, which is supported by `read_csv2()` not `read_csv()`. The code produces a single element with the name "a;b" and the observation "1;3" as a character.
+
+###Exercises 11.3.5
+  7. Generate the correct format string to parse each of the following dates and times:
+```{r prompt}
+d1 <- "January 1, 2010"
+d2 <- "2015-Mar-07"
+d3 <- "06-Jun-2017"
+d4 <- c("August 19 (2015)", "July 1 (2015)")
+d5 <- "12/30/14" # Dec 30, 2014
+t1 <- "1705"
+t2 <- "11:15:10.12 PM"
+```
+
+```{r parse}
+parse_date(d1, format = "%B %d, %Y")
+parse_date(d2, format = "%Y-%b-%d")
+parse_date(d3, format = "%d-%b-%Y")
+parse_date(d4, format = "%B %d (%Y)")
+parse_date(d5, format = "%m/%d/%y")
+parse_time(t1, format = "%H%M")
+parse_time(t2, format = "%I:%M:%OS %p")
+```
+
+-----
+
+##Chapter 12
+
+###Exercises 12.2.1
+  2. Compute the rate for table2, and table4a + table4b. You will need to perform four operations:
+  
+    1. Extract the number of TB cases per country per year.
+    2. Extract the matching population per country per year.
+    3. Divide cases by population, and multiply by 10000.
+    4. Store back in the appropriate place.
+
+Which representation is easiest to work with? Which is hardest? Why?
+
+table2:
+```{r get rates table2}
+tbcases <- tidyr::table2 %>%
+  filter(type == "cases")
+pops <- tidyr::table2 %>%
+  filter(type == "population")
+(tbrate <- tbcases %>%
+  mutate(rate = ((.$count/pops$count)*1e4)) %>%
+  select(country, year, rate) %>%
+  bind_cols(., tbcases, pops) %>%
+  select(country, year, cases = count, population = count1, rate))
+```
+
+table4a and b:
+```{r get rates table4a and b}
+tbcases <- table4a %>%
+  select(`1999`, `2000`) %>%
+  unlist(.) %>%
+  unname(.)
+pops <- table4b %>%
+  select(`1999`, `2000`) %>%
+  unlist(.) %>%
+  unname(.)
+rate <- ((tbcases/pops)*1e4)
+(tbrate <- as_tibble(cbind(country = table4a$country, year = colnames(table4a)[-1], cases = tbcases, population = pops, rate= rate)))
+```
+
+Quite frankly, they are both awful to work with. The table4 grouping is awful, as it requires some serious datatype and function mixing (I used `as_tibble()` with `cbind()`).
+
+###Exercises 12.3.3
+  4. Tidy the simple tibble below. Do you need to spread or gather it? What are the variables?
+```{r tidy some data}
+preg <- tribble(
+  ~pregnant, ~male, ~female,
+  "yes",     NA,    10,
+  "no",      20,    12
+)
+
+preg %>%
+  gather(c(male, female), key = "sex", value = "count")
+```
+
+This data was hard to interpret initially, but then I realized it was a table of pregnancy by sex for a surveyed group. Since we specify the data, we can just give a name for the `value` parameter of something like n or counts.
+
+###Exercises 12.4.5
+  1. What do the extra and fill arguments do in separate()? Experiment with the various options for the following two toy datasets.
+```{r}
+tibble(x = c("a,b,c", "d,e,f,g", "h,i,j")) %>% 
+  separate(x, c("one", "two", "three"))
+
+tibble(x = c("a,b,c", "d,e", "f,g,i")) %>% 
+  separate(x, c("one", "two", "three"))
+```
+
+`extra=` will handle extra characters accordingly. You can set to `"warn"`, `"drop"`, and `"merge"`. `fill=` deals with not enough elements, and has the following options: `"warn"`, `"right"`, and `"left"`. The left and right will fill missing values on that side. *Note that the `data=` must be a dataframe!*
+```{r show em examples}
+dummy <- tibble(x = c("a,b,c", "d,e,f,g", "h,i,j"))
+
+dummy %>%
+  separate(x, c("one", "two", "three"), extra = "warn")
+dummy %>%
+  separate(x, c("one", "two", "three"), extra = "drop")
+dummy %>%
+  separate(x, c("one", "two", "three"), extra = "merge")
+
+```
+
+>So we see that `"warn"` and `"drop"` do the same thing functionally, but the former adds the warning message.
+
+```{r show em examples for fill}
+dummy <- tibble(x = c("a,b,c", "d,e", "f,g,i"))
+
+dummy %>% 
+  separate(x, c("one", "two", "three"), fill = "warn")
+dummy %>% 
+  separate(x, c("one", "two", "three"), fill = "left")
+dummy %>% 
+  separate(x, c("one", "two", "three"), fill = "right")
+```
+
+>Now in this case, we can see that `"warn"` and `"right"` behave similarly in function. Notably, the `NA` is in the first col for `"left"`.
+
+  3.  Compare and contrast separate() and extract(). Why are there three variations of separation (by position, by separator, and with groups), but only one unite?
+  
+So `extract()` will group new cols by a regular expression according to the number of new cols. `separate()` will only use a single regex to separate by. Notably, there are three different ways to separate data, but only one for unite, as there are many ways to partition a col, but really only one way to combine multiples into a single col.
+
+###Exercises 12.5.1
+  1. Compare and contrast the fill arguments to spread() and complete().
+
+For `spread()`, `fill =` will populate both explicit and implicit missing data with the corresponding parameter value (default is `NA`). Conversely, `fill =` for `complete()` requires a list that will be used to replace missing values with instead of `NA`s specifically. The latter allows for more flexibility in replacing missing data.
+
+###Exercises 12.6.1
+  2. What happens if you neglect the mutate() step? (mutate(key = stringr::str_replace(key, "newrel", "new_rel")))
+  
+```{r tidy who - mutate}
+tidyr::who %>%
+  gather(code, value, new_sp_m014:newrel_f65, na.rm = TRUE) %>% 
+  #mutate(code = stringr::str_replace(code, "newrel", "new_rel")) %>%
+  separate(code, c("new", "var", "sexage")) %>% 
+  select(-new, -iso2, -iso3) %>% 
+  separate(sexage, c("sex", "age"), sep = 1) %>%
+  arrange(var)
+```  
+
+Now there are a bunch of issues with the var names, because there is one less signal to parse by. Therefore, some values are coerced to be NA. This really messes up the dataset. You can see this by looking for `var = "rel"` in the original version versus above. 
+
+  4. For each country, year, and sex compute the total number of cases of TB. Make an informative visualisation of the data.
+  
+```{r get and comapare tb data}
+(whoo <- tidyr::who %>%
+  gather(code, value, new_sp_m014:newrel_f65, na.rm = TRUE) %>% 
+  mutate(code = stringr::str_replace(code, "newrel", "new_rel")) %>%
+  separate(code, c("new", "var", "sexage")) %>% 
+  select(-new, -iso2, -iso3) %>% 
+  separate(sexage, c("sex", "age"), sep = 1) %>%
+   group_by(country, year, sex) %>%
+   summarise(counts = sum(value)))
+
+#now visualize
+ggplot(data = whoo) +
+  geom_line(mapping = aes(x = year, y = counts, color = country), show.legend = F) +
+  facet_grid(.~sex)
+
+```
+
+While not the absolute best, we can easily compare by sex and across years for multiple countries (label was too crazy to include).

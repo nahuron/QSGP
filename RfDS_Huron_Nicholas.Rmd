@@ -1475,7 +1475,7 @@ tibble(x = c("a,b,c", "d,e", "f,g,i")) %>%
 ```
 
 `extra=` will handle extra characters accordingly. You can set to `"warn"`, `"drop"`, and `"merge"`. `fill=` deals with not enough elements, and has the following options: `"warn"`, `"right"`, and `"left"`. The left and right will fill missing values on that side. *Note that the `data=` must be a dataframe!*
-```{r show 'em examples}
+```{r show em examples}
 dummy <- tibble(x = c("a,b,c", "d,e,f,g", "h,i,j"))
 
 dummy %>%
@@ -1489,7 +1489,7 @@ dummy %>%
 
 >So we see that `"warn"` and `"drop"` do the same thing functionally, but the former adds the warning message.
 
-```{r show 'em examples for fill}
+```{r show em examples for fill}
 dummy <- tibble(x = c("a,b,c", "d,e", "f,g,i"))
 
 dummy %>% 
@@ -1519,7 +1519,7 @@ Data can be treated as missing in two ways:
   
 We can use data spreading with a default to fill implied missing values with `NA` with `fill = NA` (with `spread()`). Conversely, when trying to get data read in or combined, you can use `na.rm = TRUE` to drop explicit missing data (with `gather()`).
 
-Notably, `complete()` can help with missing values too to get implicit ones represented explicitly:
+Notably, `complete()` can help with missing values too to get implicit ones represented explicitly. This involves getting all unique combinations of a set of cols and makes sure that the dataset contains all of those values, filling in with `NA`s as needed:
 ```{r complete example}
 stocks <- tibble(
   year   = c(2015, 2015, 2015, 2015, 2016, 2016, 2016),
@@ -1531,4 +1531,153 @@ stocks %>%
   complete(year, qtr)
 ```
 
-Now w
+Normally when reading in data, missing data help hold the shape of the dataframe, but one can use `fill()` to convert `NA`s in a col to actual values:
+
+```{r}
+(treatment <- tribble(
+  ~ person,           ~ treatment, ~response,
+  "Derrick Whitmore", 1,           7,
+  NA,                 2,           10,
+  NA,                 3,           9,
+  "Katherine Burke",  1,           4
+))
+
+treatment %>% 
+  fill(person)
+```
+
+###Exercises 12.5.1
+  1. Compare and contrast the fill arguments to spread() and complete().
+
+For `spread()`, `fill =` will populate both explicit and implicit missing data with the corresponding parameter value (default is `NA`). Conversely, `fill =` for `complete()` requires a list that will be used to replace missing values with instead of `NA`s specifically. The latter allows for more flexibility in replacing missing data.
+  
+  2. What does the direction argument to fill() do?
+  
+`direction =` is set to either `"up"` or `"down"`, which dictates the direction that filling `NA` values occurs. Default is `"down"`.
+
+###Section 12.6
+####Case Study
+
+```{r read in who tb data}
+tidyr::who
+```
+
+So it looks like `country`, `iso2`, and `iso3` all refer to the same thing. `year` is also an obvious variable.
+
+The rest of the cols are uncertain, we should gather them to figure out more and call `key` and get counts with `value`:
+```{r gather other cols}
+(who1 <- tidyr::who %>% 
+  gather(new_sp_m014:newrel_f65, key = "key", value = "cases", na.rm = TRUE))
+```
+
+Let's use `count()` to get more info:
+```{r count key}
+who1 %>%
+  count(key)
+```
+
+Using the data dictionary, we can better understand each value for key. Note that there is a transcription/data consistency error with `newrel`, which should be `new_rel`. Let's fix that with `str_replace()`:
+```{r fix newrel}
+(who2 <- who1 %>% 
+  mutate(key = stringr::str_replace(key, "newrel", "new_rel")))
+```
+
+Now, we can use `separate()` to split codes by `_` to start. We can also drop the `new`, `iso2`, and `iso3` cols, since they are redundant or not informative.
+
+```{r separate some stuff}
+(who3 <- who2 %>% 
+  separate(key, c("new", "type", "sexage"), sep = "_"))
+(who4 <- who3 %>%
+  select(-new, -iso2, -iso3))
+```
+
+We then need to break up age class and sex by chopping the first character from the rest:
+```{r break sexage}
+(who5 <- who4 %>%
+   separate(sexage, into = c("sex", "age"), sep = 1)
+   )
+```
+
+Now we have a tidy dataset! Here is what it looks like in one big piping step:
+```{r tidy who}
+tidyr::who %>%
+  gather(code, value, new_sp_m014:newrel_f65, na.rm = TRUE) %>% 
+  mutate(code = stringr::str_replace(code, "newrel", "new_rel")) %>%
+  separate(code, c("new", "var", "sexage")) %>% 
+  select(-new, -iso2, -iso3) %>% 
+  separate(sexage, c("sex", "age"), sep = 1)
+```
+
+###Exercises 12.6.1
+  1. In this case study I set na.rm = TRUE just to make it easier to check that we had the correct values. Is this reasonable? Think about how missing values are represented in this dataset. Are there implicit missing values? What’s the difference between an NA and zero?
+  
+This is probably not the best idea, as there are likely a few implicitly missing values, since there is no promise that all years had cases for all countries. `NA` implies no record exists, whereas `0` suggests no cases (big difference!). Let's try to show that there are implied missing data:
+```{r find implicit missing datat}
+tidyr::who  %>%
+  gather(code, value, new_sp_m014:newrel_f65, na.rm = TRUE) %>% 
+  group_by(country) %>%
+  summarise(count = n()) %>%
+ggplot(.) +
+  geom_bar(mapping = aes(x = country, y = count), stat = "identity") +
+  coord_flip()           
+
+#versus
+tidyr::who  %>%
+  gather(code, value, new_sp_m014:newrel_f65, na.rm = FALSE) %>% 
+  group_by(country) %>%
+  summarise(count = n()) %>%
+ggplot(.) +
+  geom_bar(mapping = aes(x = country, y = count), stat = "identity") +
+  coord_flip()  
+```
+
+The numbers are different, so this probably suggests we have some implicity `NA`s too.
+
+  2. What happens if you neglect the mutate() step? (mutate(key = stringr::str_replace(key, "newrel", "new_rel")))
+  
+```{r tidy who - mutate}
+tidyr::who %>%
+  gather(code, value, new_sp_m014:newrel_f65, na.rm = TRUE) %>% 
+  #mutate(code = stringr::str_replace(code, "newrel", "new_rel")) %>%
+  separate(code, c("new", "var", "sexage")) %>% 
+  select(-new, -iso2, -iso3) %>% 
+  separate(sexage, c("sex", "age"), sep = 1) %>%
+  arrange(var)
+```  
+
+Now there are a bunch of issues with the var names, because there is one less signal to parse by. Therefore, some values are coerced to be NA. This really messes up the dataset. You can see this by looking for `var = "rel"` in the original version versus above. 
+  
+  3. I claimed that iso2 and iso3 were redundant with country. Confirm this claim.
+  
+```{r confirm redundancy}  
+tidyr::who %>%
+  group_by(country, iso2, iso3) %>%
+  summarise(n()) %>%
+  nrow(.)
+
+#vs
+tidyr::who %>%
+  select(country) %>%
+  distinct(.) %>%
+  nrow(.)
+```
+We can see that even if we group by all three variables, we end up with the same number of rows. The first code determines groupings of all three, which would have multiple instances for a country with unique `iso` values if they did not map perfectly. Instead, we end up with a value of 219, which corresponds to the number of unique country values in the second bit of code.
+
+  4. For each country, year, and sex compute the total number of cases of TB. Make an informative visualisation of the data.
+  
+```{r get and comapare tb data}
+(whoo <- tidyr::who %>%
+  gather(code, value, new_sp_m014:newrel_f65, na.rm = TRUE) %>% 
+  mutate(code = stringr::str_replace(code, "newrel", "new_rel")) %>%
+  separate(code, c("new", "var", "sexage")) %>% 
+  select(-new, -iso2, -iso3) %>% 
+  separate(sexage, c("sex", "age"), sep = 1) %>%
+   group_by(country, year, sex) %>%
+   summarise(counts = sum(value)))
+
+#now visualize
+ggplot(data = whoo) +
+  geom_line(mapping = aes(x = year, y = counts, color = country), show.legend = F) +
+  facet_grid(.~sex)
+
+```
