@@ -1077,7 +1077,7 @@ it appears that it is not case sensitive by default. change the argument ignore.
 
 mutate() and adding new vars
 
-#7 cols
+7 cols
 ```{r}
 (flights_sml <- select(flights, year:day, ends_with("delay"), distance, air_time))
 ```
@@ -1309,7 +1309,7 @@ install.packages("Lahman", dependencies = T)
 library(Lahman)
 ```
 
-gather data and organize to compare batters BA and # at bats (AB)
+gather data and organize to compare batters BA and \# at bats (AB)
 ```{r}
 batting <- as_tibble(Lahman::Batting)
 
@@ -1536,7 +1536,7 @@ not_cancelled %>%
 
   3. the definition: `(is.na(dep_delay) | is.na(arr_delay) )`  for canceled flights is suboptimal. why? Which col is more important?
 
-#using NA removal functions
+using NA removal functions
 ```{r}
 not_cancelled <- flights %>% 
   filter(!is.na(dep_delay), !is.na(arr_delay))
