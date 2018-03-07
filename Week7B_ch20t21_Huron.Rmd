@@ -69,7 +69,15 @@ evensonly(zzz)
 ```
   
 ###Exercises 20.5.4
-  2.
+  2. What happens if you subset a tibble as if you’re subsetting a list? What are the key differences between a list and a tibble?
+  
+```{r subset a tibble like a list}
+as_tibble(iris)[[1]]
+as_tibble(iris)[1]
+as_tibble(iris)[["Sepal.Length"]]
+```
+
+It appears that tibbles respond somewhat similarly to Hadley's description of `[` and `[[` for lists. For a tibble, `[` will call the formatted row as a sub-tibble, much like for a list, it will maintain the list structure with a sub-list. However, when you use `[[`, it returns just the values for both. I imagine that the regular rules of conduct for lists and tibbles apply (e.g., tibbles are properly formatted tables where all cols and rows are of equal length, respectively), whereas lists are free to vary widely in sublist lengths.
 
 ##Chapter 21
 
