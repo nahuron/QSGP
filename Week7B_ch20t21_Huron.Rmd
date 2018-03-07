@@ -13,7 +13,7 @@ library(tidyverse)
 
 ##Chapter 20
 
-###Section 20.3.5
+###Exercises 20.3.5
   2. Read the source code for dplyr::near() (Hint: to see the source code, drop the ()). How does it work?
 ```{r near source code}
 dplyr::near
@@ -21,16 +21,61 @@ dplyr::near
 
 The function `dplyr::near()` evaluates the absolute value of the difference between the two input values and assesses whether or not it is less than some tolerance argument, which by default is set to a value related to the floating point of doubles. The output is logical based on assessing this relationship!
 
-###Section 20.4.6
-4
-###Section 20.5.4
-2
+###Exercises 20.4.6
+  4. Create functions that take a vector as input and returns:
+
+  - The last value. Should you use [ or [[?
+```{r lastvalue fn}
+#function
+lastval <- function(x){
+  x[[length(x)]]
+}
+#test it
+zzz <- 1:10
+(zzz <- purrr::set_names(x = zzz,nm = letters[1:10]))
+lastval(zzz)
+```
+    
+  It seems better to use `[[`, as we only want the value, not the element.
+
+  - The elements at even numbered positions.
+```{r even pos only}
+evenposonly <- function(x){
+  x[seq(from = 2, to = length(x), by = 2)]
+}
+
+evenposonly(zzz)
+```
+
+  - Every element except the last value.
+```{r all but last}
+notlast <- function(x){
+  x[-length(x)]
+}
+
+notlast(zzz)
+```
+
+  - Only even numbers (and no missing values).
+```{r evensonly}
+evensonly <- function(x){
+  x[(!is.na(x)) & (x %% 2 == 0)]
+}
+
+#throw in an NA to show it working
+(zzz <- c(zzz, not = NA))
+#and test it
+evensonly(zzz)
+```
+  
+###Exercises 20.5.4
+  2.
 
 ##Chapter 21
 
-###Section 21.3.5
+###Exercises 21.3.5
 3
-###Section 21.4.1
+###Exercises 21.4.1
 1
-###Section 21.5.3
+###Exercises 21.5.3
 1
