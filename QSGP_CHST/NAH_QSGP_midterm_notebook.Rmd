@@ -5,10 +5,13 @@ date: "3/6/2018"
 output: html_document
 ---
 
+##Setup Chunk
 ```{r setup, cache=TRUE}
 knitr::opts_chunk$set(echo = TRUE)
 #set the directory
 knitr::opts_knit$set(root.dir="/Volumes/GoogleDrive/My Drive/")
+#load required packages
+library(tidyverse)
 ```
 
-
+##Data Tidying
