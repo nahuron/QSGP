@@ -1,0 +1,14 @@
+---
+title: "NAH_QSGP_midterm_notebook"
+author: "Nicholas Huron"
+date: "3/6/2018"
+output: html_document
+---
+
+```{r setup, cache=TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+#set the directory
+knitr::opts_knit$set(root.dir="/Volumes/GoogleDrive/My Drive/")
+```
+
+

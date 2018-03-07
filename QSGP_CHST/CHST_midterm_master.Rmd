@@ -1,0 +1,52 @@
+---
+title: "CHST_midterm"
+author: "Lisa Chemplayil, Nicholas Huron, Nicolina Sciarretta, Tom Thomas"
+date: "3/1/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+#set the directory
+knitr::opts_knit$set(root.dir="/Volumes/GoogleDrive/My Drive/")
+#For PCs
+knitr::opts_knit$set(root.dir="G:/My Drive/")
+
+
+```
+
+I. WRANGLE the imap data
+
+25 points total: +18 code that tiddies and transforms for all EDA, +7 illustrates r4ds mastery
+
+  1. Load data into objects as required. Load in the imap data into an object called “invasives”. Load the municipality polygons into an object called “town”. Load the state senatorial polygons into an object called “s_senate”. Load the state house polygons into an object called “s_house”. Load the federal house congress polygons into an object called “congress”. Load the county data into an object called “county”. (Tom)
+
+  3. Filter out data on the spotted lanternfly. This species has not been well tracked by iMap so it should not be used. (Tom)
+
+  2. Identify and note data contained in each SpatialPolygonsDataFrame. Select, arrange, rename, or mutate data as needed before working through tasks II and III.
+
+  4. Tidy the imap data spatial locations, clean the “obsdate” variable, mutate a year variable, and filter for observations with valid years. Include as many observations that have a valid year as possible. Descriptions of why observations miss years are in obscomments_long. Use obscomments_long to add missing years and see below:
+
+II. EDA - univariate variation
+
+30 points total: +10 produce required maps and plots, +10 presentation, +10 well programed
+
+  1. Identify focal groups of species to study. You can explore any groups or species you like. See the file “iMap_spp.csv” for some suggested possible groupings. Explore and Join away!
+
+  2. Calculate number of species (species richness) per grain for your chosen groups and map the results. Join and mutate the derived species richness variables to their respective objects, that is, the SpatialPolygonsDataframes you already tidyed in task I (e.g., county, s_house).
+
+  3. Plot univariate distributions of richness for each grain and group. Are their scale differences (comparisons among grains)? Are there group differences (comparisons among species/groups)? Generally, it is easier if your data are normal. Do the distributions look normal? Does transformation of the data increase normality (e.g., log transform)? Are there any outliers in the data? Can you identify what they are? Can you identify where in the State they are? (Lisa)
+
+III. EDA - multivariate covariation
+
+45 points total: for each question, +11 adequate answer, +3 presentation, +1 ingenuity 
+
+Explore covariation among groups and human demographics. Some demographic data can be found in the data folder, but there are lots of census and demographic data available online. You will need to wrangle any datasets in R or in a spreadsheet program (e.g., Google Sheets, Excel). (Lisa will do graphs)
+
+Answer these questions.
+
+  1. Which political party represents areas with more invasive species? If you find a difference, what is a possible explanation?
+
+  2. Does the rate of human population growth correlate to the rate of species invasions? Does your answer depend on how you calculated rates? Does population size or present demographics better explain invasive species richness than rates?
+
+  3. What are the interesting patterns of covariation among the species and species groups? Plot covariation among species and groups. Are the correlations significant? (Hint: cor.test) Explore and find your own interesting patterns to describe.
