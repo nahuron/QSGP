@@ -1,0 +1,13 @@
+---
+title: "Week7B_Ch20t21_Huron.Rmd"
+author: "Nicholas Huron"
+output: html_document
+---
+
+```{r setup,cache=TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+#required packages
+
+```
+
+
