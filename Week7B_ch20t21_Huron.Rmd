@@ -7,7 +7,25 @@ output: html_document
 ```{r setup,cache=TRUE}
 knitr::opts_chunk$set(echo = TRUE)
 #required packages
-
+library(tidyverse)
 ```
 
 
+##Chapter 20
+
+###Section 20.3.5
+  
+  
+###Section 20.4.6
+4
+###Section 20.5.4
+2
+
+##Chapter 21
+
+###Section 21.3.5
+3
+###Section 21.4.1
+1
+###Section 21.5.3
+1
