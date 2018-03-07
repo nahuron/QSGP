@@ -1,0 +1,143 @@
+---
+title: "Week7A_ch17to19_Huron"
+author: "Nicholas Huron"
+date: "03/01/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+#load packages
+library(tidyverse)
+#some global params
+knitr::opts_chunk$set(echo = T)
+#set the dir
+knitr::opts_knit$set(root.dir="/Volumes/GoogleDrive/My Drive/QuantSci_GP/")
+```
+
+##Chapter 19
+###Section 19.2.1
+  3. Practice turning the following code snippets into functions. Think about what each function does. What would you call it? How many arguments does it need? Can you rewrite it to be more expressive or less duplicative?
+```{r, eval=FALSE}
+#test data
+ tester <- seq(0,30,3)
+tester[c(2,7)] <- NA
+print(tester)
+
+#first
+mean(is.na(x))
+#funciton version
+naproportion <- function(x){
+  mean(is.na(x))
+}
+
+mean(is.na(tester))
+naproportion(tester)
+
+#second
+x / sum(x, na.rm = TRUE)
+#function version
+propseq1 <- function(x){
+  xsum <- sum(x, na.rm = TRUE)
+  nums <- x/xsum
+}
+
+tester / sum(tester, na.rm = TRUE)
+propseq1(tester)
+
+#third
+sd(x, na.rm = TRUE) / mean(x, na.rm = TRUE)
+#function version
+sd_over_mean <- function(x){
+  x.sd <- sd(x, na.rm = TRUE)
+  x.mean <- mean(x, na.rm = TRUE)
+  x.sd/x.mean
+}
+
+sd(tester, na.rm = TRUE) / mean(tester, na.rm = TRUE)
+sd_over_mean(tester)
+
+```
+
+>Note that in the middle function, `NA`'s are still retained.  
+  
+###Section 19.3.1
+  3. Compare and contrast rnorm() and MASS::mvrnorm(). How could you make them more consistent?
+  
+`rnorm()` produces random numbers from a univariate normal distribution with a set mean and sd, while `MASS::mvnorm()` does something similar for a multivariate normal distribution. To improve consistency, one could change the names of arguments in one to match the other (e.g., `mean` is `mu` in `MASS::mvnorm()`), as the two functions make similar argument calls by different names.
+  
+###Section 19.4.4
+  1. What’s the difference between if and ifelse()? Carefully read the help and construct three examples that illustrate the key differences.
+  
+These two functions have some overlap (rectangle vs. square), as they both evaluate for a logical statement and perform some action `if` the evaluation is `TRUE`. `ifelse()` takes this a step further by including code for an action `if` the evaluation is **NOT `TRUE`**. This is coded as `ifelse(evaluation, doforTRUE, doforFALSE)`. `else()` can be used with `if()` to get this same effect on multiple lines.
+
+```{r if examples}
+#dummy data
+(tester <- c(1,2,4))
+
+#example to show how if will only do something if results are TRUE with even numbers
+testEven <- function(x){
+  for(a in 1:length(x)){
+    if((x[a] %% 2) == 0) {
+    print("This number is even")
+    }
+  }
+}
+
+testEven(tester)
+```
+
+>This example only uses `if`, so we have no output for the odd numbers.
+
+
+```{r ifelse example}
+#ifelse will tell us if numbers are odd or even
+#dummy data
+(tester <- c(1,2,4))
+
+testEvenOdd <- function(x){
+  for(a in 1:length(x)){
+    ifelse((x[a] %% 2) == 0, print("This number is even"), print("This number is odd"))
+  }
+}
+
+testEvenOdd(tester)
+```
+
+>This output uses `ifelse`, so we have output for both odd and even numbers.
+
+```{r if and else}
+#dummy data
+(tester <- c(1,2,4))
+
+#example to show how if will only do something if results are TRUE with even numbers
+testEvenOdd2 <- function(x){
+  for(a in 1:length(x)){
+    if((x[a] %% 2) == 0) {
+    print("This number is even")
+    } else{
+      print("This number is odd")
+    }
+  }
+}
+
+testEvenOdd2(tester)
+
+```
+
+>This example uses a separate `if` and `else` command to get both results, just like the `ifelse` version above!
+
+###Section 19.5.5
+  4. The default value for the method argument to cor() is c("pearson", "kendall", "spearman"). What does that mean? What value is used by default?
+  
+>Answer Q4, and write code to correlate two normally distributed random variables for each cor method. 
+
+Each of the detail arguments for `method =` correspond to different ways of calculating correlation coefficients, and the specified method in a string is used. Since the default is a concatenated string vector, the writer of this function set a default that is specified in the help file, `"pearson"`.
+```{r lazy cors}
+mydata.x <- rnorm(n = 100, mean = 0, sd = 34)
+mydata.y <- rnorm(n = 100, mean = 0, sd = 34)
+
+cor(x = mydata.x, y = mydata.y, method = "kendall")
+cor(x = mydata.x, y = mydata.y, method = "pearson")
+cor(x = mydata.x, y = mydata.y, method = "spearman")
+
+```

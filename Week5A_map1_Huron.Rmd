@@ -21,7 +21,7 @@ knitr::opts_chunk$set(echo = TRUE)
 #set the figure dims universally
 knitr::opts_chunk$set(fig.width=6, fig.height=10) 
 #set the dir
-knitr::opts_knit$set(root.dir="/Users/nicholashuron/Google Drive/QuantSci_GP/")
+knitr::opts_knit$set(root.dir="/Volumes/GoogleDrive/My Drive/QuantSci_GP/")
 ```
 
 ###Load Provided Data

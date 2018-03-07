@@ -1,8 +1,11 @@
 ---
 title: "Week5B_Ch9t12_Huron"
 author: "Nicholas Huron"
-date: 2018-02-20
-output: html_document
+date: '2018-02-20'
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup}
