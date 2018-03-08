@@ -82,7 +82,52 @@ It appears that tibbles respond somewhat similarly to Hadley's description of `[
 ##Chapter 21
 
 ###Exercises 21.3.5
-  3. 
+  3. Write a function that prints the mean of each numeric column in a data frame, along with its name. For example, show_mean(iris) would print:
+
+    show_mean(iris)
+    #> Sepal.Length: 5.84
+    #> Sepal.Width:  3.06
+    #> Petal.Length: 3.76
+    #> Petal.Width:  1.20
+
+(Extra challenge: what function did I use to make sure that the numbers lined up nicely, even though the variable names had different lengths?)
+
+So the code below will work, but it isn't as clean as Hadley's...
+```{r numeric col means fn}
+show_means <- function(x, decimal_digits = 2){
+  for(i in seq_along(names(x))){
+    if(is.numeric(x[[i]])){ #is_numeric did not work... rather than complicate the conditional, just used is.numeric instead
+      hold_mean <- format(x = round(mean(x[[i]]), digits = decimal_digits), nsmall = decimal_digits)
+      print(paste0(names(x)[i], ": ", hold_mean))
+    } else{
+      #do not put anything here, but if we wanted to say so, we could do something like this:
+      warning(paste0(names(x)[i]), " does not contain numeric data!")
+    }
+  }
+}
+
+show_means(iris)
+```
+
+I guess we can try to do it Hadley's way too?
+```{r clean version}
+show_means <- function(x, decimal_digits = 2){
+#initialize list to store all of the strings
+results_show_means <- vector(mode = "list", length = length(names(x)))
+  for(i in seq_along(names(x))){
+    if(is.numeric(x[[i]])){ #is_numeric did not work... rather than complicate the conditional, just used is.numeric instead
+      hold_mean <- format(x = round(mean(x[[i]]), digits = decimal_digits), nsmall = decimal_digits)
+      results_show_means[[i]] <- paste0(names(x)[i], ": ", hold_mean)
+    } else{
+      #do not put anything here, but if we wanted to say so, we could do something like this:
+      warning(paste0(names(x)[i]), " does not contain numeric data!\n")
+    }
+  }
+print(results_show_means)
+}
+
+show_means(iris)
+```
   
 ###Exercises 21.4.1
   1. 
