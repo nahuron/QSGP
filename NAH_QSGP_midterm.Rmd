@@ -123,6 +123,8 @@ invasives2 %>%
 
 We now can confirm that there are 724 rows that contain some reference to the date in the comments section. These likely represent dates that need fixing or may need to be removed from the dataset. We also realize we need to format the dates at some point. First, let us find the true unknowns/uncertains by using the keywords `"unknown"` and `"placeholder"`/`"place-holder"`.
 ```{r find unknowns}
+#Authors: NAH
+
 invasives2 %>%
   dplyr::select(obsid, obscomments_long) %>%
   filter(str_detect(obscomments_long, pattern = "(d|D)ate")) %>%

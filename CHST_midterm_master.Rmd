@@ -104,6 +104,59 @@ nrow(invasives2)
 
 We know from previous communications that the `invasives$obsdate` variable contains data that are not equally reliable. To be certain that we use dates with reliable years only, we are going to clean `obsdate` and then `mutate()` a new variable (called `year`) that we will use for temporal analyses. To do so, we can search the `obscomments_long` entries for rows from `obsdate` that need tidying!
 
+```{r clean obsdate}
+#Authors: NAH
+
+#explore obsdate and obscomments_long
+invasives2 %>%
+  dplyr::select(obsdate, obscomments_long) %>%
+  filter(str_detect(obscomments_long, pattern = "(d|D)ate")) %>%
+  arrange(obscomments_long)
+
+#get number of rows of interest
+invasives2 %>%
+  dplyr::select(obsdate, obscomments_long) %>%
+  filter(str_detect(obscomments_long, pattern = "(d|D)ate")) %>%
+  arrange(obscomments_long) %>%
+  nrow()
+```
+
+We now can confirm that there are 724 rows that contain some reference to the date in the comments section. These likely represent dates that need fixing or may need to be removed from the dataset. We also realize we need to format the dates at some point. First, let us find the true unknowns/uncertains by using the keywords `"unknown"` and `"placeholder"`/`"place-holder"`.
+```{r find unknowns}
+#Authors: NAH
+
+invasives2 %>%
+  dplyr::select(obsid, obscomments_long) %>%
+  filter(str_detect(obscomments_long, pattern = "(d|D)ate")) %>%
+  filter(str_detect(obscomments_long, pattern = "(u|U)nknown | (p|P)lace[\\-holder]*")) %>%
+  arrange(obscomments_long)
+```
+
+Of the 724 rows, only 56 have the keywords we are worried about. These 56 rows represent dates that may be slated for removal. The other 668 are likely ambiguous but can be determined to year with confidence. Now we have to trim the former before verifying the years for `obsdate` values in the latter. We can use `obsid` values as our identifiers for the rows we need to remove (manually spot-checked the 56 rows).
+```{r rm questionable date rows}
+#Authors: NAH
+
+#check the nrows of invasives2 to start
+nrow(invasives2)
+
+#object of rows to remove with certainty
+rows2rm <- c("PA-6898U", "PA-379U", "PA-8018U", "PA-6643U", "PA-6407U", "PA-6885U",	"PA-6766U", "PA-6891U", "PA-6693U",	"PA-6761U")
+
+#remove these rows from invasives2
+invasives2 <- invasives2 %>%
+  dplyr::filter(!(obsid %in% rows2rm))
+
+#check that rows were dropped
+nrow(invasives2)
+```
+
+As it turns out, only 10 of these rows lack a confident year of observation, so we removed them from this dataset. The rest may need year spot checking...
+
+
+
+
+
+
 
 We also need to make the `invasives2` object a SpatialPolygonsDataFrame and set the CRS for that as well, now that we have tidied it.
 ```{r convert invasives}
