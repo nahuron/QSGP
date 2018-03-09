@@ -137,7 +137,7 @@ show_means(iris)
 >It took a bunch of google searching, but here we go!
   
 ###Exercises 21.4.1
-  1. 
+  1. Read the documentation for apply(). In the 2d case, what two for loops does it generalise?
   
 ###Exercises 21.5.3
   1. 
