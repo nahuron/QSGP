@@ -25,6 +25,7 @@ library(sp)
 library(raster)
 library(rgdal)
 library(maptools)
+library(lubridate)
 
 #set working directory as needed
 #For mac
@@ -150,63 +151,14 @@ invasives2 <- invasives2 %>%
 nrow(invasives2)
 ```
 
-As it turns out, only 10 of these rows lack a confident year of observation, so we removed them from this dataset. The rest may need year spot checking...
+As it turns out, only 10 of these rows lack a confident year of observation, so we removed them from this dataset. The rest may need year spot checking... but for now, we  can create a new column, `year` that contains the year of each obsdate.
 
-```{r find unknowns}
+```{r mutate years}
 #Authors: NAH
 
 invasives2 %>%
-  dplyr::select(obsid, obsdate, obscomments_long) %>%
-  filter(str_detect(obscomments_long, pattern = "(d|D)ate")) %>%
-  arrange(obscomments_long)
+  dplyr::mutate(year = str_extract(obsdate, "\\d{4}"))
 ```
-
-
-
-#from map tutorial
-fixDates <- unlist(strsplit(as.character(invasives2$obsdate), ' '))
-fixDates <- fixDates[seq(1, length(fixDates), by=2)]
-invasives$obsdate <- as.Date(fixDates, format='%m/%d/%Y')
-invasives$year <- as.numeric(substr(invasives$obsdate, start=1, stop=4))
-
-#get rid of missing dates
-invasivesNArm <- invasives[! is.na(invasives@data$year),]
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 We also need to make the `invasives2` object a SpatialPolygonsDataFrame and set the CRS for that as well, now that we have tidied it.
 ```{r convert invasives}

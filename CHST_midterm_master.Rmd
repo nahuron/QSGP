@@ -150,13 +150,14 @@ invasives2 <- invasives2 %>%
 nrow(invasives2)
 ```
 
-As it turns out, only 10 of these rows lack a confident year of observation, so we removed them from this dataset. The rest may need year spot checking...
+As it turns out, only 10 of these rows lack a confident year of observation, so we removed them from this dataset. The rest may need year spot checking... but for now, we  can create a new column, `year` that contains the year of each obsdate.
 
+```{r mutate years}
+#Authors: NAH
 
-
-
-
-
+invasives2 %>%
+  dplyr::mutate(year = str_extract(obsdate, "\\d{4}"))
+```
 
 We also need to make the `invasives2` object a SpatialPolygonsDataFrame and set the CRS for that as well, now that we have tidied it.
 ```{r convert invasives}
@@ -168,4 +169,3 @@ proj4string(invasives2) <- projection('+proj=longlat +datum=WGS84 +no_defs +ellp
 
 
   2. Identify and note data contained in each SpatialPolygonsDataFrame. Select, arrange, rename, or mutate data as needed before working through tasks II and III.
-
