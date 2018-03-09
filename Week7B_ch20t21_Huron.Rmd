@@ -117,17 +117,24 @@ results_show_means <- vector(mode = "list", length = length(names(x)))
   for(i in seq_along(names(x))){
     if(is.numeric(x[[i]])){ #is_numeric did not work... rather than complicate the conditional, just used is.numeric instead
       hold_mean <- format(x = round(mean(x[[i]]), digits = decimal_digits), nsmall = decimal_digits)
-      results_show_means[[i]] <- paste0(names(x)[i], ": ", hold_mean)
+      results_show_means[[i]] <- paste0(names(x)[i], ": ")
+      results_show_means[[i]][2] <- str_length(results_show_means[[i]][1])
+      results_show_means[[i]][3] <- paste0(str_pad(results_show_means[[i]][1], width = 15, side = "right"), hold_mean)
+      results_show_means[[i]][1] <- results_show_means[[i]][3]
+      results_show_means[[i]] <- results_show_means[[i]][1]
     } else{
       #do not put anything here, but if we wanted to say so, we could do something like this:
       warning(paste0(names(x)[i]), " does not contain numeric data!\n")
+      results_show_means <- results_show_means[-i]
     }
   }
-print(results_show_means)
+writeLines(paste(unlist(results_show_means), sep = " \n"))
 }
 
 show_means(iris)
 ```
+
+>It took a bunch of google searching, but here we go!
   
 ###Exercises 21.4.1
   1. 
