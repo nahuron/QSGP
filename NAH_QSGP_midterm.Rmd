@@ -1,0 +1,180 @@
+---
+title: "NAH_QSGP_midterm_notebook"
+author: "Nicholas Huron"
+date: "3/6/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+#Authors: TT, NGS, NAH
+
+#clear workspace first
+rm(list=ls())
+
+knitr::opts_chunk$set(echo = TRUE)
+#set the directory
+knitr::opts_knit$set(root.dir = "/Volumes/GoogleDrive/My Drive/")
+#For PCs
+#knitr::opts_knit$set(root.dir = "G:/My Drive/")
+
+#load required packages
+library(tidyverse)
+library(ggmap)
+library(RColorBrewer)
+library(sp)
+library(raster)
+library(rgdal)
+library(maptools)
+
+#set working directory as needed
+#For mac
+#setwd("/Volumes/GoogleDrive/My Drive/")
+#For PCs
+#setwd("G:/My Drive/")
+```
+
+##I. WRANGLE the imap data
+###Read in invasives dataset and polygon shapefiles
+
+We load all of the shapefiles for now, just in case we need any of them later.
+```{r read data}
+#Authors: TT, NGS, NAH
+
+#read in invasives
+invasives <- read_csv("./QuantSci_GP/data/PA_Invasive_Species/all_obs_imap_18Dec17_v2_0.csv")
+
+#read in shapefiles
+town <-readOGR(dsn = "./QuantSci_GP/data/PA_Invasive_Species/shapefiles/", layer='PaMunicipalities2017_01')
+s_senate  <- readOGR(dsn = "./QuantSci_GP/data/PA_Invasive_Species/shapefiles/", layer='PaSenatorial2017_01')
+s_house   <- readOGR(dsn = "./QuantSci_GP/data/PA_Invasive_Species/shapefiles/", layer='PaHouse2017_01')
+congress  <- readOGR(dsn = "./QuantSci_GP/data/PA_Invasive_Species/shapefiles/", layer='PaCongressional2017_01')
+county    <- readOGR(dsn = "./QuantSci_GP/data/PA_Invasive_Species/shapefiles/", layer='PaCounty2017_01')
+```
+
+###Clean up the read in data (Part 1)
+
+We rename the lat/long coordinate columns for ease of reference.
+```{r rename latlong}
+#Authors: TT
+
+colnames(invasives)[colnames(invasives) %in% 'obsorigxcoord'] <- 'long'
+colnames(invasives)[colnames(invasives) %in% 'obsorigycoord'] <- 'lat'
+```
+
+Now, we need to make sure that all of the coordinate systems play nicely by standardizing the coordinate reference systems for shapefiles.
+```{r standardize shapefile CRS}
+#Authors: TT
+
+county <- spTransform(county, CRS('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0'))
+s_senate <- spTransform(s_senate, CRS('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0'))
+congress <- spTransform(congress, CRS('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0'))
+town <- spTransform(town, CRS('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0'))
+s_house <- spTransform(s_house, CRS('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0'))
+```
+
+###Filter out data on the spotted lanternfly
+
+First, we should confirm the best way to filter out, either by scientific name or common name. To do this, we will summarise the data that have common names containing the word `"fly"`, just to make sure nothing gets lost in syntax variation.
+```{r EDA lantern fly}
+#Authors: NAH
+
+invasives %>%
+  group_by(state_scientific_name, stateCommonName) %>%
+  count() %>%
+  filter(str_detect(stateCommonName, pattern = "fly")) %>%
+  arrange(desc(n))
+```
+
+>It is clear that there are a few observations with fly, and it looks like `"Spotted Lanternfly"` is the consistent common name for this species, but we will stick to the scientific name to be certain when we `filter` it out below in our new `invasives` object (called `invasives2`).
+
+```{r filter}
+#Authors: TT, NAH
+
+#get original row count
+nrow(invasives)
+
+invasives2 <- invasives %>%
+  filter(state_scientific_name != "Lycorma delicatula")
+
+#check that we lost some rows
+nrow(invasives2)
+```
+
+###Clean up the read in data (Part 2)
+
+We know from previous communications that the `invasives$obsdate` variable contains data that are not equally reliable. To be certain that we use dates with reliable years only, we are going to clean `obsdate` and then `mutate()` a new variable (called `year`) that we will use for temporal analyses. To do so, we can search the `obscomments_long` entries for rows from `obsdate` that need tidying!
+
+```{r clean obsdate}
+#Authors: NAH
+
+#explore obsdate and obscomments_long
+invasives2 %>%
+  dplyr::select(obsdate, obscomments_long) %>%
+  filter(str_detect(obscomments_long, pattern = "[dD]ate")) %>%
+  arrange(obscomments_long)
+
+#get number of rows of interest
+invasives2 %>%
+  dplyr::select(obsdate, obscomments_long) %>%
+  filter(str_detect(obscomments_long, pattern = "[dD]ate")) %>%
+  arrange(obscomments_long) %>%
+  nrow()
+```
+
+We now can confirm that there are 724 rows that contain some reference to the date in the comments section. These likely represent dates that need fixing or may need to be removed from the dataset. We also realize we need to format the dates at some point.
+
+#from map tutorial
+fixDates <- unlist(strsplit(as.character(invasives$obsdate), ' '))
+fixDates <- fixDates[seq(1, length(fixDates), by=2)]
+invasives$obsdate <- as.Date(fixDates, format='%m/%d/%Y')
+invasives$year <- as.numeric(substr(invasives$obsdate, start=1, stop=4))
+
+#get rid of missing dates
+invasivesNArm <- invasives[! is.na(invasives@data$year),]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+We also need to make the `invasives2` object a SpatialPolygonsDataFrame and set the CRS for that as well, now that we have tidied it.
+```{r convert invasives}
+#Authors: NAH
+
+coordinates(invasives2) <- ~long+lat
+proj4string(invasives2) <- projection('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0')
+```
+
+
+  2. Identify and note data contained in each SpatialPolygonsDataFrame. Select, arrange, rename, or mutate data as needed before working through tasks II and III.

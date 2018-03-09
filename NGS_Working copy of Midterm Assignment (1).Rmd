@@ -1,0 +1,84 @@
+---
+title: "Midterm Assignment"
+author: "Nicolina Sciarretta"
+date: "March 6, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Loading All packages
+```{r}
+rm(list=ls())
+library(tidyverse)
+library(ggmap)
+library(raster)
+library(sp)
+library(rgdal)
+library(RColorBrewer)
+library(maptools)
+```
+
+
+
+```{r}
+#set the directory
+#For PCs
+knitr::opts_knit$set(root.dir="G:/My Drive/")
+```
+
+
+###Set working directory and load invasives data
+```{r}
+invasives <- read.csv("file:///G:/My Drive/QuantSci_GP/data/PA_Invasive_Species/all_obs_imap_18Dec17_v2_0.csv")
+town <-readOGR(dsn=choose.dir(), layer='PaMunicipalities2017_01')
+s_senate <-readOGR(dsn=choose.dir(), layer='PaSenatorial2017_01')
+s_house <-readOGR(dsn=choose.dir(), layer='PaHouse2017_01')
+congress <-readOGR(dsn=choose.dir(), layer='PaCongressional2017_01')
+county <-readOGR(dsn=choose.dir(), layer='PaCounty2017_01')
+```
+
+
+
+###Filter out data on the spotted lanternfly
+```{r}
+filter(invasives, state_scientific_name != "Lycorma delicatula")
+```
+
+####Identify & Note Data in Each SpatialPolygonsDataFrame
+
+```{r}
+colnames(invasives)[colnames(invasives) %in% 'obsorigxcoord'] <- 'long'
+colnames(invasives)[colnames(invasives) %in% 'obsorigycoord'] <- 'lat'
+county <- spTransform(county, CRS('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0'))
+s_senate <- spTransform(s_senate, CRS('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0'))
+congress <- spTransform(congress, CRS('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0'))
+town <- spTransform(town, CRS('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0'))
+s_house <- spTransform(s_house, CRS('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0'))
+```
+
+
+
+```{r}
+#from map tutorial
+fixDates <- unlist(strsplit(as.character(invasives$obsdate), ' '))
+fixDates <- fixDates[seq(1, length(fixDates), by=2)]
+invasives$obsdate <- as.Date(fixDates, format='%m/%d/%Y')
+invasives$year <- as.numeric(substr(invasives$obsdate, start=1, stop=4))
+
+#get rid of missing dates
+invasivesNArm <- invasives[! is.na(invasives@data$year),]
+#filter to just 1800s
+invasives1800s <- invasivesNArm[invasivesNArm@data$year >= 1800 & invasivesNArm@data$year <= 1890,]
+
+#filter invasives to not include 1800-1899
+filter(invasives != "invasives1800s")
+```
+
+
+
+
+
+

@@ -1,0 +1,55 @@
+---
+title: "R Notebook"
+author: Thomson Thomas
+output: html_notebook
+---
+
+### Load all neccessary packages 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggmap)
+library(RColorBrewer)
+library(sp)
+library(raster)
+library(rgdal)
+library(maptools)
+library(googledrive)
+```
+
+```{r setup, cache=TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+#set the directory
+knitr::opts_knit$set(root.dir="./QuantSci_GP/data/PA_Invasive_Species/")
+```
+
+### Load invasives data
+```{r}
+setwd("/Volumes/GoogleDrive/My Drive/QuantSci_GP/data/PA_Invasive_Species")
+invasives <- read_csv("all_obs_imap_18Dec17_v2_0")
+town <-readOGR(dsn=choose.dir(), layer='PaMunicipalities2017_01')
+s_senate <-readOGR(dsn=choose.dir(), layer='PaSenatorial2017_01')
+s_house <-readOGR(dsn=choose.dir(), layer='PaHouse2017_01')
+congress <-readOGR(dsn=choose.dir(), layer='PaCongressional2017_01')
+county <-readOGR(dsn=choose.dir(), layer='PaCounty2017_01')
+```
+
+###Filter out data on the spotted lanternfly
+```{r}
+filter(invasives,stateCommonName !="Spotted Lanternfly")
+```
+
+####Identify & Note Data in Each SpatialPolygonsDataFrame
+
+```{r}
+colnames(invasives)[colnames(invasives) %in% 'obsorigxcoord'] <- 'long'
+colnames(invasives)[colnames(invasives) %in% 'obsorigycoord'] <- 'lat'
+county <- spTransform(county, CRS('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0'))
+s_senate <- spTransform(s_senate, CRS('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0'))
+congress <- spTransform(congress, CRS('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0'))
+town <- spTransform(town, CRS('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0'))
+s_house <- spTransform(s_house, CRS('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0'))
+```
+
+####Clean up obsdate
+
