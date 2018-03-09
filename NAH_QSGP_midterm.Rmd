@@ -150,6 +150,17 @@ invasives2 <- invasives2 %>%
 nrow(invasives2)
 ```
 
+As it turns out, only 10 of these rows lack a confident year of observation, so we removed them from this dataset. The rest may need year spot checking...
+
+```{r find unknowns}
+#Authors: NAH
+
+invasives2 %>%
+  dplyr::select(obsid, obsdate, obscomments_long) %>%
+  filter(str_detect(obscomments_long, pattern = "(d|D)ate")) %>%
+  arrange(obscomments_long)
+```
+
 
 
 #from map tutorial
