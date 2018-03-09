@@ -110,21 +110,30 @@ We know from previous communications that the `invasives$obsdate` variable conta
 #explore obsdate and obscomments_long
 invasives2 %>%
   dplyr::select(obsdate, obscomments_long) %>%
-  filter(str_detect(obscomments_long, pattern = "[dD]ate")) %>%
+  filter(str_detect(obscomments_long, pattern = "(d|D)ate")) %>%
   arrange(obscomments_long)
 
 #get number of rows of interest
 invasives2 %>%
   dplyr::select(obsdate, obscomments_long) %>%
-  filter(str_detect(obscomments_long, pattern = "[dD]ate")) %>%
+  filter(str_detect(obscomments_long, pattern = "(d|D)ate")) %>%
   arrange(obscomments_long) %>%
   nrow()
 ```
 
-We now can confirm that there are 724 rows that contain some reference to the date in the comments section. These likely represent dates that need fixing or may need to be removed from the dataset. We also realize we need to format the dates at some point.
+We now can confirm that there are 724 rows that contain some reference to the date in the comments section. These likely represent dates that need fixing or may need to be removed from the dataset. We also realize we need to format the dates at some point. First, let us find the true unknowns/uncertains by using the keywords `"unknown"` and `"placeholder"`/`"place-holder"`.
+```{r find unknowns}
+invasives2 %>%
+  dplyr::select(obscomments_long) %>%
+  filter(str_detect(obscomments_long, pattern = "(d|D)ate")) %>%
+  filter(str_detect(obscomments_long, pattern = "(u|U)nknown | (p|P)lace[\\-holder]*")) %>%
+  arrange(obscomments_long)
+```
+
+Of the 724 rows, only 56 have the keywords we are worried about. These 56 rows represent dates that may be slated for removal. The other 668 are likely ambiguous but can be determined to year with confidence.
 
 #from map tutorial
-fixDates <- unlist(strsplit(as.character(invasives$obsdate), ' '))
+fixDates <- unlist(strsplit(as.character(invasives2$obsdate), ' '))
 fixDates <- fixDates[seq(1, length(fixDates), by=2)]
 invasives$obsdate <- as.Date(fixDates, format='%m/%d/%Y')
 invasives$year <- as.numeric(substr(invasives$obsdate, start=1, stop=4))
