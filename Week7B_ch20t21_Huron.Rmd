@@ -1,6 +1,7 @@
 ---
 title: "Week7B_Ch20t21_Huron.Rmd"
 author: "Nicholas Huron"
+date: "03/13/2018"
 output: html_document
 ---
 
@@ -8,6 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 #required packages
 library(tidyverse)
+library(nycflights13)
 ```
 
 
@@ -72,9 +74,9 @@ evensonly(zzz)
   2. What happens if you subset a tibble as if you’re subsetting a list? What are the key differences between a list and a tibble?
   
 ```{r subset a tibble like a list}
-as_tibble(iris)[[1]]
-as_tibble(iris)[1]
-as_tibble(iris)[["Sepal.Length"]]
+dplyr::as_tibble(iris)[[1]]
+dplyr::as_tibble(iris)[1]
+dplyr::as_tibble(iris)[["Sepal.Length"]]
 ```
 
 It appears that tibbles respond somewhat similarly to Hadley's description of `[` and `[[` for lists. For a tibble, `[` will call the formatted row as a sub-tibble, much like for a list, it will maintain the list structure with a sub-list. However, when you use `[[`, it returns just the values for both. I imagine that the regular rules of conduct for lists and tibbles apply (e.g., tibbles are properly formatted tables where all cols and rows are of equal length, respectively), whereas lists are free to vary widely in sublist lengths.
@@ -118,8 +120,8 @@ results_show_means <- vector(mode = "list", length = length(names(x)))
     if(is.numeric(x[[i]])){ #is_numeric did not work... rather than complicate the conditional, just used is.numeric instead
       hold_mean <- format(x = round(mean(x[[i]]), digits = decimal_digits), nsmall = decimal_digits)
       results_show_means[[i]] <- paste0(names(x)[i], ": ")
-      results_show_means[[i]][2] <- str_length(results_show_means[[i]][1])
-      results_show_means[[i]][3] <- paste0(str_pad(results_show_means[[i]][1], width = 15, side = "right"), hold_mean)
+      results_show_means[[i]][2] <- stringr::str_length(results_show_means[[i]][1])
+      results_show_means[[i]][3] <- paste0(stringr::str_pad(results_show_means[[i]][1], width = 15, side = "right"), hold_mean)
       results_show_means[[i]][1] <- results_show_means[[i]][3]
       results_show_means[[i]] <- results_show_means[[i]][1]
     } else{
@@ -139,5 +141,28 @@ show_means(iris)
 ###Exercises 21.4.1
   1. Read the documentation for apply(). In the 2d case, what two for loops does it generalise?
   
+Depending on the `MARGIN` argument, `apply()` will generalize `for()` loops over the columns and rows. If you manage to select `1`, it will loop over the rows, and if you select `2`, it will loop over the cols.
+
 ###Exercises 21.5.3
-  1. 
+  1. Write code that uses one of the map functions to:
+
+  - Compute the mean of every column in mtcars.
+```{r}
+purrr::map_dbl(mtcars, mean)
+```
+    
+  - Determine the type of each column in nycflights13::flights.
+```{r}
+purrr::map(nycflights13::flights, typeof)
+```
+  
+  - Compute the number of unique values in each column of iris.
+```{r}
+purrr::map(iris, dplyr::n_distinct)
+```
+    
+  - Generate 10 random normals for each of μ=−10, 0, 10, and 100.
+```{r}
+nums <- c(-10, 0, 10, 100)
+purrr::map(nums, rnorm, n = 10)
+```
