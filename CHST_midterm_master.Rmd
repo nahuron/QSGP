@@ -159,6 +159,19 @@ invasives2 %>%
   dplyr::mutate(year = str_extract(obsdate, "\\d{4}"))
 ```
 
+
+###Verifying Dates
+using the view() command of invasivescheck, it will give you a tabl eof just those specified columns. With that table you can sear for key workds in columns. In the comments column the workd "date" was first searched, with over 700 entries i decided to pick repetivitive words from thse 700 entries that i noticed right away. The next word search was "representative", which resulted in 110 entries. Of those 110 entries about half are dated in obsdate and year column as 1980, however, in comments its states taht "1980 is a repesentative of the time frame (1980-2007) when this county was known to gebin hosting HWA". The next word search was "unknown" these resulted in 31 entries, 13 of these refer to the exact day/month is unkown but year is known. The last search word was "known", this also brought up "unknown" again. "known" had 218 entries, abut 50 of the entries refered to the "representative" word, and more than half refer to unknown day/month but known year. According to my observations the years do match the comments, however we need to decide if we want to keep the observations that have a date range of 1980-2007. 
+```{r check years}
+#Authors: NGS
+
+invasivescheck <- invasives2 %>% dplyr::mutate(year = str_extract(obsdate, "\\d{4}")) %>% 
+  dplyr::select(obsdate, obscomments_long, year)
+
+```
+
+###Clean up the read in data (Part 3)
+
 We also need to make the `invasives2` object a SpatialPolygonsDataFrame and set the CRS for that as well, now that we have tidied it.
 ```{r convert invasives}
 #Authors: NAH
