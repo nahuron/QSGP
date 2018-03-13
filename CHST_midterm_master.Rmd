@@ -195,18 +195,63 @@ invasives2 <- invasives2 %>%
 nrow(invasives2)
 
 ```
+  
+###Identify focal species
 
-
-We also need to make the `invasives2` object a SpatialPolygonsDataFrame and set the CRS for that as well, now that we have tidied it.
-```{r convert invasives}
+First, we read in the `iMap_spp.csv` file to a new object `imap_spp`. We can trim the new object down to all entries we already tidied by selectively joining `imap_spp` to `invasives2`. The resulting object is `invasives3`. 
+```{r read in imap_spp and join}
 #Authors: NAH
 
-coordinates(invasives2) <- ~long+lat
-proj4string(invasives2) <- projection('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0')
+#read in imap_spp
+imap_spp <- read_csv("./QuantSci_GP/data/PA_Invasive_Species/iMap_sppp.csv")
+#change the colname to match invasives2
+colnames(imap_spp)[colnames(imap_spp) %in% "SpeciesType"] <- "speciestype"
+
+#left join to invasives2 to make new object, invasives3
+invasives3 <- left_join(x = invasives2, y = imap_spp, by = c("state_scientific_name", "stateCommonName", "natlhabitat"))
+
+#now we need to drop the invasives2 version of speciestype and rename speciestype.y to speciestype
+invasives3 <- invasives3 %>%
+  dplyr::select(-speciestype.x, speciestype = speciestype.y)
+
+invasives3
+
+```
+
+Now, data exploration can be done to select focal taxa. Full disclosure, an exploration of this summary was done previously, leading to the use of aquatic species, as they are taxonomically diverse and less biased towards overwhelming plant observations. The final filtered version of just **aquatic invasive species** is called `aqua_invasives`.
+```{r look at aquatic v terrestrial and then filter}
+#Authors: NAH
+imap_spp %>%
+  #filter(state_scientific_name %in% as_vector((invasives3 %>% distinct(state_scientific_name)))) %>%
+  filter(state_scientific_name %in% unique(invasives3$state_scientific_name)) %>%
+  group_by(natlhabitat) %>%
+  count()
+imap_spp %>%
+  filter(state_scientific_name %in% unique(invasives3$state_scientific_name)) %>%
+  group_by(natlhabitat, speciestype) %>%
+  count() %>%
+  arrange(desc(n))
+
+#filter for natlhabitat == "aquatic"
+(aqua_invasives <- invasives3 %>%
+  filter(natlhabitat == "aquatic" | natlhabitat == "Aquatic"))
+
+```
+
+>It is easy to see that working with aquatic species may involve fewer species, but the involved species are separated by group more evenly (not 201 of 209 as plants, as in terrestrial species).
+
+
+We also need to make the `aqua_invasives` object a SpatialPolygonsDataFrame and set the CRS for that as well, now that we have tidied it. To make this easier, we will create a new object, `aqua_invasives_spatial`. This way, we can always reference the original tibble.
+```{r convert invasives}
+#Authors: NAH
+aqua_invasives_spatial <- aqua_invasives
+
+coordinates(aqua_invasives_spatial) <- ~long+lat
+proj4string(aqua_invasives_spatial) <- projection('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0')
 ```
 
 
-  2. Identify and note data contained in each SpatialPolygonsDataFrame. Select, arrange, rename, or mutate data as needed before working through tasks II and III.
+2. Identify and note data contained in each SpatialPolygonsDataFrame. Select, arrange, rename, or mutate data as needed before working through tasks II and III.
   
   
 ###Species Richeness Per Federal Congressional
@@ -235,4 +280,5 @@ p <- ggplot(data=invasivesCongressionalgg)+
 
 p
 ```
+
 

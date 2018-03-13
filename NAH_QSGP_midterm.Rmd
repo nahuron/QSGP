@@ -25,9 +25,8 @@ library(sp)
 library(raster)
 library(rgdal)
 library(maptools)
-library(lubridate)
 
-#set working directory as needed
+#set working directory as needed if the root.dir call fails
 #For mac
 #setwd("/Volumes/GoogleDrive/My Drive/")
 #For PCs
@@ -45,11 +44,11 @@ We load all of the shapefiles for now, just in case we need any of them later.
 invasives <- read_csv("./QuantSci_GP/data/PA_Invasive_Species/all_obs_imap_18Dec17_v2_0.csv")
 
 #read in shapefiles
-town <-readOGR(dsn = "./QuantSci_GP/data/PA_Invasive_Species/shapefiles/", layer='PaMunicipalities2017_01')
-s_senate  <- readOGR(dsn = "./QuantSci_GP/data/PA_Invasive_Species/shapefiles/", layer='PaSenatorial2017_01')
-s_house   <- readOGR(dsn = "./QuantSci_GP/data/PA_Invasive_Species/shapefiles/", layer='PaHouse2017_01')
-congress  <- readOGR(dsn = "./QuantSci_GP/data/PA_Invasive_Species/shapefiles/", layer='PaCongressional2017_01')
-county    <- readOGR(dsn = "./QuantSci_GP/data/PA_Invasive_Species/shapefiles/", layer='PaCounty2017_01')
+town <-readOGR(dsn = "./QuantSci_GP/data/PA_Invasive_Species/shapefiles", layer='PaMunicipalities2017_01')
+s_senate  <- readOGR(dsn = "./QuantSci_GP/data/PA_Invasive_Species/shapefiles", layer='PaSenatorial2017_01')
+s_house   <- readOGR(dsn = "./QuantSci_GP/data/PA_Invasive_Species/shapefiles", layer='PaHouse2017_01')
+congress  <- readOGR(dsn = "./QuantSci_GP/data/PA_Invasive_Species/shapefiles", layer='PaCongressional2017_01')
+county    <- readOGR(dsn = "./QuantSci_GP/data/PA_Invasive_Species/shapefiles", layer='PaCounty2017_01')
 ```
 
 ###Clean up the read in data (Part 1)
@@ -160,13 +159,97 @@ invasives2 %>%
   dplyr::mutate(year = str_extract(obsdate, "\\d{4}"))
 ```
 
-We also need to make the `invasives2` object a SpatialPolygonsDataFrame and set the CRS for that as well, now that we have tidied it.
-```{r convert invasives}
+
+###Verifying Dates and clean up the read in data (part 3)
+Using `View()` of `invasivescheck` below, one can check that dates are correct in the table of just the specified columns. With that table you can search for keywords in columns. In the comments column the word "date" was first searched, with over 700 entries. If one picked repetivitive words from thse 700 entries that . The next word search was "representative", which resulted in 110 entries. Of those 110 entries about half are dated in `obsdate` and `year` as 1980, however, in comments its states that "1980 is a repesentative of the time frame (1980-2007) when this county was known to begin hosting HWA". The next word search was "unknown" these resulted in 31 entries, 13 of these refer to the exact day/month is unkown but year is known. The last search word was "known", this also brought up "unknown" again. "known" had 218 entries, abut 50 of the entries refered to the "representative" word, and more than half refer to unknown day/month but known year.
+```{r check years}
+#Authors: NGS
+
+View(invasivescheck <- invasives2 %>% dplyr::mutate(year = str_extract(obsdate, "\\d{4}")) %>% 
+  dplyr::select(obsid, stateCommonName, obsdate, obscomments_long, year))
+
+```
+
+According to these observations the years do match the comments, however we need to remove the observations that have a date range of 1980-2007. 
+```{r remove representative}
 #Authors: NAH
 
-coordinates(invasives2) <- ~long+lat
-proj4string(invasives2) <- projection('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0')
+#filter out the observations with the 1980-2007 date range. This can be done with a match of "representative", but when observing the filtration of View(), there are some other unintended rows that are fine for dates. Instead, let's filter with that date range in the comments, "1980-2007" as well!
+(rows2rm2 <- invasives2 %>%
+  dplyr::select(obsid, obscomments_long) %>%
+  filter(str_detect(obscomments_long, pattern = "(r|R)epresentative")) %>%
+  filter(str_detect(obscomments_long, pattern = "1980\\-2007")) %>%
+  arrange(obscomments_long) %>%
+  dplyr::select(obsid))
+
+rows2rm2 <- as_vector(rows2rm2)
+
+#invasives2 row check
+nrow(invasives2)
+
+#remove these rows from invasives2
+invasives2 <- invasives2 %>%
+  dplyr::filter(!(obsid %in% rows2rm2))
+
+#final row check in invasives2
+nrow(invasives2)
+
+```
+  
+###Identify focal species
+
+First, we read in the `iMap_spp.csv` file to a new object `imap_spp`. We can trim the new object down to all entries we already tidied by selectively joining `imap_spp` to `invasives2`. The resulting object is `invasives3`. 
+```{r read in imap_spp and join}
+#Authors: NAH
+
+#read in imap_spp
+imap_spp <- read_csv("./QuantSci_GP/data/PA_Invasive_Species/iMap_sppp.csv")
+#change the colname to match invasives2
+colnames(imap_spp)[colnames(imap_spp) %in% "SpeciesType"] <- "speciestype"
+
+#left join to invasives2 to make new object, invasives3
+invasives3 <- left_join(x = invasives2, y = imap_spp, by = c("state_scientific_name", "stateCommonName", "natlhabitat"))
+
+#now we need to drop the invasives2 version of speciestype and rename speciestype.y to speciestype
+invasives3 <- invasives3 %>%
+  dplyr::select(-speciestype.x, speciestype = speciestype.y)
+
+invasives3
+
+```
+
+Now, data exploration can be done to select focal taxa. Full disclosure, an exploration of this summary was done previously, leading to the use of aquatic species, as they are taxonomically diverse and less biased towards overwhelming plant observations. The final filtered version of just **aquatic invasive species** is called `aqua_invasives`.
+```{r look at aquatic v terrestrial and then filter}
+#Authors: NAH
+imap_spp %>%
+  #filter(state_scientific_name %in% as_vector((invasives3 %>% distinct(state_scientific_name)))) %>%
+  filter(state_scientific_name %in% unique(invasives3$state_scientific_name)) %>%
+  group_by(natlhabitat) %>%
+  count()
+imap_spp %>%
+  filter(state_scientific_name %in% unique(invasives3$state_scientific_name)) %>%
+  group_by(natlhabitat, speciestype) %>%
+  count() %>%
+  arrange(desc(n))
+
+#filter for natlhabitat == "aquatic"
+(aqua_invasives <- invasives3 %>%
+  filter(natlhabitat == "aquatic" | natlhabitat == "Aquatic"))
+
+```
+
+>It is easy to see that working with aquatic species may involve fewer species, but the involved species are separated by group more evenly (not 201 of 209 as plants, as in terrestrial species).
+
+
+
+We also need to make the `aqua_invasives` object a SpatialPolygonsDataFrame and set the CRS for that as well, now that we have tidied it. To make this easier, we will create a new object, `aqua_invasives_spatial`. This way, we can always reference the original tibble.
+```{r convert invasives}
+#Authors: NAH
+aqua_invasives_spatial <- aqua_invasives
+
+coordinates(aqua_invasives_spatial) <- ~long+lat
+proj4string(aqua_invasives_spatial) <- projection('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0')
 ```
 
 
-  2. Identify and note data contained in each SpatialPolygonsDataFrame. Select, arrange, rename, or mutate data as needed before working through tasks II and III.
+2. Identify and note data contained in each SpatialPolygonsDataFrame. Select, arrange, rename, or mutate data as needed before working through tasks II and III.
