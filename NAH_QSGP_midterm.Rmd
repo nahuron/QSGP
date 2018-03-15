@@ -251,5 +251,31 @@ coordinates(aqua_invasives_spatial) <- ~long+lat
 proj4string(aqua_invasives_spatial) <- projection('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0')
 ```
 
+###Species Richeness Per Federal Congressional
+```{r}
+#Authors: NGS
+srPerCongressional <- over(aqua_invasives_spatial, congress)
+srPerCongressional <- cbind(srPerCongressional, aqua_invasives_spatial$state_scientific_name)
+colnames(srPerCongressional)[colnames(srPerCongressional) %in% 'aqua_invasives_spatial$state_scientific_name'] <- 'species' 
+srPerCongressional <- group_by(srPerCongressional, LEG_DISTRI) 
+srPerCongressional <- dplyr::summarise(srPerCongressional, sr=length(unique(species)))
+```
+
+```{r} 
+#Authors: NGS
+invasivesCongressional <- congress
+invasivesCongressional@data <- left_join(invasivesCongressional@data, srPerCongressional, by='LEG_DISTRI') 
+
+
+invasivesCongressionalgg <- fortify(invasivesCongressional, region='LEG_DISTRI') 
+invasivesCongressionalgg <- left_join(invasivesCongressionalgg, invasivesCongressional@data, by=c("id" = 'LEG_DISTRI')) 
+
+p <- ggplot(data=invasivesCongressionalgg)+
+  geom_polygon(aes(x=long, y=lat, group=group, fill=sr))+ 
+  coord_fixed(1.3)+ 
+  scale_fill_gradient()
+
+p
+```
 
 
