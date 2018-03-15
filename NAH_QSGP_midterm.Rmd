@@ -44,9 +44,9 @@ We load all of the shapefiles for now, just in case we need any of them later.
 invasives <- read_csv("./QuantSci_GP/data/PA_Invasive_Species/all_obs_imap_18Dec17_v2_0.csv")
 
 #read in shapefiles
-town <-readOGR(dsn = "./QuantSci_GP/data/PA_Invasive_Species/shapefiles", layer='PaMunicipalities2017_01')
-s_senate  <- readOGR(dsn = "./QuantSci_GP/data/PA_Invasive_Species/shapefiles", layer='PaSenatorial2017_01')
-s_house   <- readOGR(dsn = "./QuantSci_GP/data/PA_Invasive_Species/shapefiles", layer='PaHouse2017_01')
+#town <-readOGR(dsn = "./QuantSci_GP/data/PA_Invasive_Species/shapefiles", layer='PaMunicipalities2017_01')
+#s_senate  <- readOGR(dsn = "./QuantSci_GP/data/PA_Invasive_Species/shapefiles", layer='PaSenatorial2017_01')
+#s_house   <- readOGR(dsn = "./QuantSci_GP/data/PA_Invasive_Species/shapefiles", layer='PaHouse2017_01')
 congress  <- readOGR(dsn = "./QuantSci_GP/data/PA_Invasive_Species/shapefiles", layer='PaCongressional2017_01')
 county    <- readOGR(dsn = "./QuantSci_GP/data/PA_Invasive_Species/shapefiles", layer='PaCounty2017_01')
 ```
@@ -66,10 +66,10 @@ Now, we need to make sure that all of the coordinate systems play nicely by stan
 #Authors: TT
 
 county <- spTransform(county, CRS('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0'))
-s_senate <- spTransform(s_senate, CRS('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0'))
+#s_senate <- spTransform(s_senate, CRS('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0'))
 congress <- spTransform(congress, CRS('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0'))
-town <- spTransform(town, CRS('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0'))
-s_house <- spTransform(s_house, CRS('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0'))
+#town <- spTransform(town, CRS('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0'))
+#s_house <- spTransform(s_house, CRS('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0'))
 ```
 
 ###Filter out data on the spotted lanternfly
@@ -252,4 +252,4 @@ proj4string(aqua_invasives_spatial) <- projection('+proj=longlat +datum=WGS84 +n
 ```
 
 
-2. Identify and note data contained in each SpatialPolygonsDataFrame. Select, arrange, rename, or mutate data as needed before working through tasks II and III.
+

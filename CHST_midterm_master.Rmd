@@ -253,13 +253,14 @@ proj4string(aqua_invasives_spatial) <- projection('+proj=longlat +datum=WGS84 +n
 
 2. Identify and note data contained in each SpatialPolygonsDataFrame. Select, arrange, rename, or mutate data as needed before working through tasks II and III.
   
-  
+
+
 ###Species Richeness Per Federal Congressional
 ```{r}
 #Authors: NGS
-srPerCongressional <- over(invasives2, congress)
-srPerCongressional <- cbind(srPerCongressional, invasives2$state_scientific_name)
-colnames(srPerCongressional)[colnames(srPerCongressional) %in% 'invasives2$state_scientific_name'] <- 'species' 
+srPerCongressional <- over(aqua_invasives_spatial, congress)
+srPerCongressional <- cbind(srPerCongressional, aqua_invasives_spatial$state_scientific_name)
+colnames(srPerCongressional)[colnames(srPerCongressional) %in% 'aqua_invasives_spatial$state_scientific_name'] <- 'species' 
 srPerCongressional <- group_by(srPerCongressional, LEG_DISTRI) 
 srPerCongressional <- dplyr::summarise(srPerCongressional, sr=length(unique(species)))
 ```
@@ -280,5 +281,3 @@ p <- ggplot(data=invasivesCongressionalgg)+
 
 p
 ```
-
-
