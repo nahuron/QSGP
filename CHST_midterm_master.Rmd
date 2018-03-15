@@ -195,7 +195,10 @@ invasives2 <- invasives2 %>%
 nrow(invasives2)
 
 ```
-  
+
+2. Identify and note data contained in each SpatialPolygonsDataFrame. Select, arrange, rename, or mutate data as needed before working through tasks II and III.
+
+##II. EDA - Univariate  
 ###Identify focal species
 
 First, we read in the `iMap_spp.csv` file to a new object `imap_spp`. We can trim the new object down to all entries we already tidied by selectively joining `imap_spp` to `invasives2`. The resulting object is `invasives3`. 
@@ -249,9 +252,6 @@ aqua_invasives_spatial <- aqua_invasives
 coordinates(aqua_invasives_spatial) <- ~long+lat
 proj4string(aqua_invasives_spatial) <- projection('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0')
 ```
-
-
-2. Identify and note data contained in each SpatialPolygonsDataFrame. Select, arrange, rename, or mutate data as needed before working through tasks II and III.
   
 
 

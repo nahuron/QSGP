@@ -44,9 +44,9 @@ We load all of the shapefiles for now, just in case we need any of them later.
 invasives <- read_csv("./QuantSci_GP/data/PA_Invasive_Species/all_obs_imap_18Dec17_v2_0.csv")
 
 #read in shapefiles
-#town <-readOGR(dsn = "./QuantSci_GP/data/PA_Invasive_Species/shapefiles", layer='PaMunicipalities2017_01')
-#s_senate  <- readOGR(dsn = "./QuantSci_GP/data/PA_Invasive_Species/shapefiles", layer='PaSenatorial2017_01')
-#s_house   <- readOGR(dsn = "./QuantSci_GP/data/PA_Invasive_Species/shapefiles", layer='PaHouse2017_01')
+town <-readOGR(dsn = "./QuantSci_GP/data/PA_Invasive_Species/shapefiles", layer='PaMunicipalities2017_01')
+s_senate  <- readOGR(dsn = "./QuantSci_GP/data/PA_Invasive_Species/shapefiles", layer='PaSenatorial2017_01')
+s_house   <- readOGR(dsn = "./QuantSci_GP/data/PA_Invasive_Species/shapefiles", layer='PaHouse2017_01')
 congress  <- readOGR(dsn = "./QuantSci_GP/data/PA_Invasive_Species/shapefiles", layer='PaCongressional2017_01')
 county    <- readOGR(dsn = "./QuantSci_GP/data/PA_Invasive_Species/shapefiles", layer='PaCounty2017_01')
 ```
@@ -66,10 +66,10 @@ Now, we need to make sure that all of the coordinate systems play nicely by stan
 #Authors: TT
 
 county <- spTransform(county, CRS('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0'))
-#s_senate <- spTransform(s_senate, CRS('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0'))
+s_senate <- spTransform(s_senate, CRS('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0'))
 congress <- spTransform(congress, CRS('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0'))
-#town <- spTransform(town, CRS('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0'))
-#s_house <- spTransform(s_house, CRS('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0'))
+town <- spTransform(town, CRS('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0'))
+s_house <- spTransform(s_house, CRS('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0'))
 ```
 
 ###Filter out data on the spotted lanternfly
@@ -195,7 +195,10 @@ invasives2 <- invasives2 %>%
 nrow(invasives2)
 
 ```
-  
+
+2. Identify and note data contained in each SpatialPolygonsDataFrame. Select, arrange, rename, or mutate data as needed before working through tasks II and III.
+
+##II. EDA - Univariate  
 ###Identify focal species
 
 First, we read in the `iMap_spp.csv` file to a new object `imap_spp`. We can trim the new object down to all entries we already tidied by selectively joining `imap_spp` to `invasives2`. The resulting object is `invasives3`. 
@@ -241,7 +244,6 @@ imap_spp %>%
 >It is easy to see that working with aquatic species may involve fewer species, but the involved species are separated by group more evenly (not 201 of 209 as plants, as in terrestrial species).
 
 
-
 We also need to make the `aqua_invasives` object a SpatialPolygonsDataFrame and set the CRS for that as well, now that we have tidied it. To make this easier, we will create a new object, `aqua_invasives_spatial`. This way, we can always reference the original tibble.
 ```{r convert invasives}
 #Authors: NAH
@@ -250,8 +252,10 @@ aqua_invasives_spatial <- aqua_invasives
 coordinates(aqua_invasives_spatial) <- ~long+lat
 proj4string(aqua_invasives_spatial) <- projection('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0')
 ```
+  
 
-###Species Richeness Per Federal Congressional
+
+###Species Richeness Per Federal Congressional District (old)
 ```{r}
 #Authors: NGS
 srPerCongressional <- over(aqua_invasives_spatial, congress)
@@ -277,5 +281,3 @@ p <- ggplot(data=invasivesCongressionalgg)+
 
 p
 ```
-
-
