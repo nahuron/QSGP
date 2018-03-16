@@ -1,0 +1,85 @@
+---
+title: "Week9B_Ch22t23_Huron.Rmd"
+author: "Nicholas Huron"
+date: "3/15/2018"
+output: html_document
+---
+
+```{r setup, include=TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+#required packages
+library(modelr)
+library(tidyverse)
+options(na.action = na.warn)
+```
+
+##Chapter 23
+
+###Section 23.2.1
+  1. One downside of the linear model is that it is sensitive to unusual values because the distance incorporates a squared term. Fit a linear model to the simulated data below, and visualise the results. Rerun a few times to generate different simulated datasets. What do you notice about the model?
+```{r simulated data}
+sim1a <- tibble(
+  x = rep(1:10, each = 3),
+  y = x * 1.5 + 6 + rt(length(x), df = 2)
+)
+```
+
+Now let's fit to a linear model and plot the results!
+```{r fit lm and plot}
+#fit
+model1 <- sim1a %>%
+  lm(y~x, .) %>%
+  coef(.)
+#plot it
+  ggplot(sim1a) +
+  geom_abline(aes(intercept = model1[1], slope = model1[2])) +
+  geom_point(mapping = aes(x,y))
+```
+
+We can piece this all together and run multiple instances of the simulation illustrate the point that `lm()` does not handle extreme outliers well (they are not modeled well by the linear model that is produced and fits the rest of the data well).
+```{r loop to show}
+#list to hold results
+models <- list(NULL, NULL, NULL, NULL, NULL)
+
+#loop to get data points and params
+for(a in 1:5){
+  #data gen
+  dat_hold <- tibble(
+  x = rep(1:10, each = 3),
+  y = x * 1.5 + 6 + rt(length(x), df = 2))
+  
+  #param
+  par_hold <- dat_hold %>%
+  lm(y~x, .) %>%
+  coef(.)
+  
+  #slam them into the list!
+  models[[a]] <- list(dat_hold, par_hold)
+  names(models)[a] <- paste0("model", a)
+}
+```
+
+Now we can plot each of the *five* example datasets and models. Let's loop it!
+```{r loop the plots as one}
+#cb friendly palette
+cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+
+p <- ggplot()
+for(b in seq_along(models)){
+  p <- p+ geom_abline(aes(intercept = models[[b]][[2]][1], slope = models[[b]][[2]][2]), color = cbbPalette[b]) +
+  geom_point(mapping = aes(x,y), data = models[[b]][[1]], color = cbbPalette[b])
+}
+p
+```
+ 
+While somewhat difficult to see each line (they are all stacked on one another), we can see some strong outliers that are not contributing much to the fit models!  
+  
+###Section 23.3.3
+  1. 
+###Section 23.4.5
+2
+4
+###Section 23.5
+How do you set R to give warnings if observations are dropped when fitting a model like lm()?
+
+?options
