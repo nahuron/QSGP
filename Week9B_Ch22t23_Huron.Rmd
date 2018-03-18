@@ -77,6 +77,46 @@ While somewhat difficult to see each line (they are all stacked on one another),
 ###Section 23.3.3
   1. Instead of using lm() to fit a straight line, you can use loess() to fit a smooth curve. Repeat the process of model fitting, grid generation, predictions, and visualisation on sim1 using loess() instead of lm(). How does the result compare to geom_smooth()?
   
+We need to re-initialize `sim1a`, so we do so first:
+```{r re-init sim1a}
+sim1a <- tibble(
+  x = rep(1:10, each = 3),
+  y = x * 1.5 + 6 + rt(length(x), df = 2)
+)
+```
+
+With the new object, we will fit the model first:
+```{r fit loess}
+loess_sim1a <- loess(y~x, data = sim1a)
+```
+
+Secondly, we generate a grid and add predictions:
+```{r generate loess grid}
+#grid time
+grid_sim1a <- sim1a %>%
+  data_grid(x)
+
+#prediction time
+grid_sim1a <- grid_sim1a %>%
+  add_predictions(loess_sim1a)
+```
+
+Lastly, we need to visualize the results:
+```{r visualize loess}
+p <- ggplot(data = sim1a, mapping = aes(x = x)) +
+  geom_point(mapping = aes(y = y))
+
+#visualize loess version
+pl <- p +  geom_line(mapping = aes(y = pred), data = grid_sim1a, colour = "green", size = 2)
+
+pl
+#visualize geom_smooth version
+pls <- pl + geom_smooth(mapping = aes(y = y), se = FALSE)
+
+pls
+```
+>They lines appear to be the same, go figure (`geom_smooth()` defaults to `"loess"`, so they should be)!
+  
 ###Section 23.4.5
 2
 4
