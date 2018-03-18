@@ -75,7 +75,8 @@ p
 While somewhat difficult to see each line (they are all stacked on one another), we can see some strong outliers that are not contributing much to the fit models!  
   
 ###Section 23.3.3
-  1. 
+  1. Instead of using lm() to fit a straight line, you can use loess() to fit a smooth curve. Repeat the process of model fitting, grid generation, predictions, and visualisation on sim1 using loess() instead of lm(). How does the result compare to geom_smooth()?
+  
 ###Section 23.4.5
 2
 4

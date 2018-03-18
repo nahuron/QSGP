@@ -5,7 +5,7 @@ date: "3/1/2018"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
+```{r setup, , results='hide', message=FALSE}
 #Authors: TT, NGS, NAH
 
 #clear workspace first
@@ -37,11 +37,11 @@ library(maptools)
 ###Read in invasives dataset and polygon shapefiles
 
 We load all of the shapefiles for now, just in case we need any of them later.
-```{r read data}
+```{r read data, results='hide', message=FALSE}
 #Authors: TT, NGS, NAH
 
 #read in invasives
-invasives <- read_csv("./QuantSci_GP/data/PA_Invasive_Species/all_obs_imap_18Dec17_v2_0.csv")
+invasives <- read_csv("./QuantSci_GP/data/PA_Invasive_Species/all_obs_imap_18Dec17_v2_0.csv", progress = FALSE)
 
 #read in shapefiles
 town <-readOGR(dsn = "./QuantSci_GP/data/PA_Invasive_Species/shapefiles", layer='PaMunicipalities2017_01')
@@ -72,7 +72,16 @@ town <- spTransform(town, CRS('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 
 s_house <- spTransform(s_house, CRS('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0'))
 ```
 
-###Filter out data on the spotted lanternfly
+###Identify and note data contained in each SpatialPolygonsDataFrame. Select, arrange, rename, or mutate data as needed.
+
+We focus on the grain of federal congressional districts. In the SpatialPolygonsDataFrame object `congress`, which contains information on the 18 districts. The `data` section contains the following columns that are relevant for our analyses:
+  1. LEG_DISTRI [factor]: the unique number identifier for each district
+  5. PARTY  [factor]: the one letter code for the political party of each district's representative
+  
+This object also contains a `polygons` section that gives spatial data that helps draw each district. The `ID` identifies each polygon to a district (although it starts counting at zero and connects through the `plotOrder` section). There is also a `bbox` section that defines the plot area and a `proj4string` section that contains the coordinate reference system to translate latitude and longitude values to the plot.
+
+
+###Filter out data on the spotted lanternfly from `invasives`
 
 First, we should confirm the best way to filter out, either by scientific name or common name. To do this, we will summarise the data that have common names containing the word `"fly"`, just to make sure nothing gets lost in syntax variation.
 ```{r EDA lantern fly}
@@ -196,12 +205,10 @@ nrow(invasives2)
 
 ```
 
-2. Identify and note data contained in each SpatialPolygonsDataFrame. Select, arrange, rename, or mutate data as needed before working through tasks II and III.
-
 ##II. EDA - Univariate  
 ###Identify focal species
 
-First, we read in the `iMap_spp.csv` file to a new object `imap_spp`. We can trim the new object down to all entries we already tidied by selectively joining `imap_spp` to `invasives2`. The resulting object is `invasives3`. 
+First, we read in the `iMap_spp.csv` file to a new object `imap_spp`. We can trim the new object down to all entries we already tidied by selectively joining `imap_spp` to `invasives2` by `"state_scientific_name", "stateCommonName", and "natlhabitat"`. The resulting object is `invasives3`. 
 ```{r read in imap_spp and join}
 #Authors: NAH
 
@@ -246,7 +253,7 @@ imap_spp %>%
 
 We also need to make the `aqua_invasives` object a SpatialPolygonsDataFrame and set the CRS for that as well, now that we have tidied it. To make this easier, we will create a new object, `aqua_invasives_spatial`. This way, we can always reference the original tibble.
 ```{r convert invasives}
-#Authors: NAH
+#Authors: TT, NAH
 aqua_invasives_spatial <- aqua_invasives
 
 coordinates(aqua_invasives_spatial) <- ~long+lat
@@ -256,7 +263,7 @@ proj4string(aqua_invasives_spatial) <- projection('+proj=longlat +datum=WGS84 +n
 
 
 ###Species Richeness Per Federal Congressional
-```{r}
+```{r join SR and congressional data}
 #Authors: NGS
 srPerCongressional <- over(aqua_invasives_spatial, congress)
 srPerCongressional <- cbind(srPerCongressional, aqua_invasives_spatial$state_scientific_name)
@@ -265,7 +272,7 @@ srPerCongressional <- group_by(srPerCongressional, LEG_DISTRI)
 srPerCongressional <- dplyr::summarise(srPerCongressional, sr=length(unique(species)))
 ```
 
-```{r} 
+```{r plot the results, message = FALSE} 
 #Authors: NGS
 invasivesCongressional <- congress
 invasivesCongressional@data <- left_join(invasivesCongressional@data, srPerCongressional, by='LEG_DISTRI') 
@@ -280,4 +287,77 @@ p <- ggplot(data=invasivesCongressionalgg)+
   scale_fill_gradient()
 
 p
+```
+
+Now, we can break down aquatic invasive species richness by congression LEG_DISTRI for the five major species types in the dataset:
+```{r split by species type}
+#Authors: NGS, NAH
+turtles <- aqua_invasives %>% filter(speciestype == "turtle")
+plants <- aqua_invasives %>% filter(speciestype == "plant")
+arthropods <- aqua_invasives %>% filter(speciestype == "arthropod")
+mollusc <- aqua_invasives %>% filter(speciestype == "mollusc")
+fish <- aqua_invasives %>% filter(speciestype == "fish")
+
+#combine into a list for easy looping
+byspeciestype <- list(turtles, plants, arthropods, mollusc, fish)
+names(byspeciestype) <- c("turtles", "plants", "arthropods", "mollusc", "fish")
+```
+
+Now that we have filtered versions of `aqua_invasives` for each `speciestype`, so we need to turn them into **SpatialPolygonsDataFrames** and calculate **Species Richness (SR)**. In summarizing the **SR** for each `speciestype`, we need to populate counties that are missing in the output with **SR** set to zero. This is done mid-loop, check the code comments for further details.
+
+```{r loop get SR by LEG_DISTRI, message = FALSE}
+#Authors: NGS, NAH
+#create new version of list that contains each species type
+spatial_byspeciestype <- byspeciestype
+
+#loop to set the coordinate system and reference system
+for(a in seq_along(spatial_byspeciestype)){
+  coordinates(spatial_byspeciestype[[a]]) <- ~long+lat
+  proj4string(spatial_byspeciestype[[a]]) <- projection('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0')
+}
+
+#next, we need to perform a similar loop to overlay the spatial invasives data with the congressional LEG_DISTRI data. we will also end up summarising SR by LEG_DISTRI for each group in this loop.
+
+#initialize holder lists for loops  
+sr_per_congressional_byspeciestype <- spatial_byspeciestype
+invasive_congressional_byspeciestype <- spatial_byspeciestype
+invasive_congressional_gg_byspeciestype <- spatial_byspeciestype
+  
+for(b in seq_along(spatial_byspeciestype)){
+  sr_per_congressional_byspeciestype[[b]] <- over(spatial_byspeciestype[[b]], congress)
+  sr_per_congressional_byspeciestype[[b]] <- cbind(sr_per_congressional_byspeciestype[[b]], spatial_byspeciestype[[b]]$state_scientific_name)
+  colnames(sr_per_congressional_byspeciestype[[b]])[colnames(sr_per_congressional_byspeciestype[[b]]) %in% 'spatial_byspeciestype[[b]]$state_scientific_name'] <- 'species'
+  sr_per_congressional_byspeciestype[[b]] <- group_by(sr_per_congressional_byspeciestype[[b]], LEG_DISTRI)
+  sr_per_congressional_byspeciestype[[b]] <- dplyr::summarise(sr_per_congressional_byspeciestype[[b]], sr=length(unique(species))) %>% 
+    filter(!is.na(LEG_DISTRI))
+  
+#we need to add code here that adds the missing districts with SR==0
+if(length(setdiff(congress$LEG_DISTRI, sr_per_congressional_byspeciestype[[b]]$LEG_DISTRI)) > 0){
+sr_per_congressional_byspeciestype[[b]] <- add_row(sr_per_congressional_byspeciestype[[b]], LEG_DISTRI = setdiff(congress$LEG_DISTRI, sr_per_congressional_byspeciestype[[b]]$LEG_DISTRI), sr = rep(0, length(setdiff(congress$LEG_DISTRI, sr_per_congressional_byspeciestype[[b]]$LEG_DISTRI))))
+}
+  
+  invasive_congressional_byspeciestype[[b]] <- congress
+  invasive_congressional_byspeciestype[[b]]@data <- left_join(invasive_congressional_byspeciestype[[b]]@data, sr_per_congressional_byspeciestype[[b]], by = "LEG_DISTRI")
+  
+  invasive_congressional_gg_byspeciestype[[b]] <- fortify(invasive_congressional_byspeciestype[[b]], sr_per_congressional_byspeciestype[[b]], region = 'LEG_DISTRI')
+  invasive_congressional_gg_byspeciestype[[b]] <- left_join(invasive_congressional_gg_byspeciestype[[b]], invasive_congressional_byspeciestype[[b]]@data, by = c("id" = 'LEG_DISTRI'))
+}
+
+```
+
+Now we have the object `invasive_congressional_gg_byspeciestype` that is formatted to plot the map of results for each species
+
+```{r loop to plot by group} 
+#Authors: NGS, NAH
+#loop through ggplot commands
+for(c in seq_along(invasive_congressional_gg_byspeciestype)){
+   print(
+     ggplot(data = invasive_congressional_gg_byspeciestype[[c]]) +
+    geom_polygon(aes(x=long, y=lat, group=group, fill=sr))+ 
+    coord_fixed(1.3)+ 
+    scale_fill_gradient()+
+    ggtitle(names(invasive_congressional_gg_byspeciestype)[c])
+   )
+}
+
 ```
