@@ -101,15 +101,14 @@ grid_sim1a <- grid_sim1a %>%
   add_predictions(loess_sim1a)
 ```
 
-Lastly, we need to visualize the results:
+Lastly, we need to visualize the results (green) versus `geom_smooth()` (blue):
 ```{r visualize loess}
 p <- ggplot(data = sim1a, mapping = aes(x = x)) +
   geom_point(mapping = aes(y = y))
 
 #visualize loess version
-pl <- p +  geom_line(mapping = aes(y = pred), data = grid_sim1a, colour = "green", size = 2)
+pl <- p +  geom_line(mapping = aes(y = pred), data = grid_sim1a, colour = "green", size = 3)
 
-pl
 #visualize geom_smooth version
 pls <- pl + geom_smooth(mapping = aes(y = y), se = FALSE)
 
@@ -118,9 +117,64 @@ pls
 >They lines appear to be the same, go figure (`geom_smooth()` defaults to `"loess"`, so they should be)!
   
 ###Section 23.4.5
-2
-4
+  2. Use model_matrix() to explore the equations generated for the models I fit to sim3 and sim4. Why is * a good shorthand for interaction?
+  
+Firstly, let's explore equations for `sim3`:
+```{r sim3 explore}
+sim3
+model_matrix(sim3, formula = y ~ x1 + x2)
+model_matrix(sim3, formula = y ~ x1 * x2)
+```
+
+Now a look at `sim4`:
+```{r sim4 explore}
+sim4
+model_matrix(sim4, formula = y ~ x1 + x2)
+model_matrix(sim4, formula = y ~ x1 * x2)
+```
+
+The use of `*` to capture interactions is convenient in formulas. It can flexibly recognize the categories in the factor `sim3$x2` as well as the continuous values in `sim4$x2` and accounts for the interaction possibilities correctly! This is a great example of a tool that lets your code work for you rather than working for your code.
+
+  4. For sim4, which of mod1 and mod2 is better? I think mod2 does a slightly better job at removing patterns, but it’s pretty subtle. Can you come up with a plot to support my claim?
+  
+Let's make sure we capture the same models Hadley uses:
+```{r make sim4 models}
+sim4
+(mod1 <- lm(y ~ x1 + x2, data = sim4))
+(mod2 <- lm(y ~ x1 * x2, data = sim4))
+```
+ 
+It seems useful to check and plot residuals here to compare models:
+```{r compare residuals}
+#get residuals
+(resid_sim4 <- sim4 %>%
+  gather_residuals(mod1, mod2))
+
+#plot residuals by model
+m1 <- ggplot(data = resid_sim4, mapping = aes(x1, resid)) +
+  geom_point() +
+  facet_wrap(~model)
+
+m1 + geom_point(color = "green", mapping = aes(x1, mean(abs(resid))))
+
+m2 <- ggplot(data = resid_sim4, mapping = aes(x2, resid)) +
+  geom_point() +
+  facet_wrap(~model)
+m2 + geom_point(color = "green", mapping = aes(x2, mean(abs(resid))))
+
+#check mean abs resid
+resid_sim4 %>%
+  group_by(model) %>%
+  summarise(mean(abs(resid), na.rm = T))
+
+#try to plot as density curves?
+ggplot(data = resid_sim4) +
+  geom_density(mapping = aes(x = abs(resid), group = model, fill = model, alpha = 0.5))
+```
+
+Just looking at mean absolute residual alone, it may be possible to see that `mod2` has slightly smaller residuals than `mod1`, indicating a slightly better fit. The density plot of absolute residuals seems to support this? That being said, trying to look at the scatterplots of residuals and `x1` and`x2` seems to not be particularly illuminating, since it is so tough to spot much of a difference...so if I am trying to support Hadley's claim, I go with the density plot and mean absolute value residuals.
+  
 ###Section 23.5
 How do you set R to give warnings if observations are dropped when fitting a model like lm()?
 
-?options
+If you run `options(na.action = na.warn)` in the setup chunk (or prior to model fitting), you will get a warning when there are `NA`'s that are dropped from the model!

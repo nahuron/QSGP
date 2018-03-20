@@ -5,7 +5,7 @@ date: "3/1/2018"
 output: html_document
 ---
 
-```{r setup, , results='hide', message=FALSE}
+```{r setup, results='hide', message=FALSE}
 #Authors: TT, NGS, NAH
 
 #clear workspace first
@@ -13,7 +13,7 @@ rm(list=ls())
 
 knitr::opts_chunk$set(echo = TRUE)
 #set the directory
-knitr::opts_knit$set(root.dir = "/Volumes/GoogleDrive/My Drive/")
+knitr::opts_knit$set(root.dir = "/Volumes/GoogleDrive/My Drive")
 #For PCs
 #knitr::opts_knit$set(root.dir = "G:/My Drive/")
 
@@ -284,7 +284,9 @@ invasivesCongressionalgg <- left_join(invasivesCongressionalgg, invasivesCongres
 p <- ggplot(data=invasivesCongressionalgg)+
   geom_polygon(aes(x=long, y=lat, group=group, fill=sr))+ 
   coord_fixed(1.3)+ 
-  scale_fill_gradient()
+  scale_fill_gradient() +
+  ggtitle(str_to_title("Species Richness of Invasive Aquatic Species In Pennsylvania")) +
+    labs(y = "Latitude of PA in Degrees", x = "Longitute of PA in Degrees")
 
 p
 ```
@@ -352,12 +354,86 @@ Now we have the object `invasive_congressional_gg_byspeciestype` that is formatt
 #loop through ggplot commands
 for(c in seq_along(invasive_congressional_gg_byspeciestype)){
    print(
-     ggplot(data = invasive_congressional_gg_byspeciestype[[c]]) +
+    ggplot(data = invasive_congressional_gg_byspeciestype[[c]]) +
     geom_polygon(aes(x=long, y=lat, group=group, fill=sr))+ 
     coord_fixed(1.3)+ 
     scale_fill_gradient()+
-    ggtitle(names(invasive_congressional_gg_byspeciestype)[c])
+    ggtitle(str_to_title(paste0("Species Richness of Invasive Aquatic ", names(invasive_congressional_gg_byspeciestype)[c], " in Pennsylvania"))) +
+    labs(y = "Latitude of PA in Degrees", x = "Longitute of PA in Degrees")
    )
 }
 
+```
+
+
+###Univariate Distributions of richness for each grain and group
+
+To compare species richness between grains, we need to develop a version of the code for `congress` and `aqua_invasives` for all other grain types. Before we do that, let's show we can plot the univariate curve of SR for congress
+
+```{r plot sr curve congress}
+#Authors: NAH
+ggplot(data = srPerCongressional) +
+  geom_density(aes(sr), fill = "black") +
+  ggtitle(str_to_title(paste0("Species Richness of Invasive Aquatic Species"))) +
+  labs(y = "Density", x = "sr")
+```
+
+Let's create a list with the SR for all grains:
+```{r get SR per grain}
+#Authors: NAH
+
+#town    MUNICPAL_
+#s_senate LEG_DISTRI
+#s_house LEG_DISTRI
+#congress LEG_DISTRI
+#county  COUNTY_NAM
+
+#initialize a bunch of lists to hold  results
+sr_per_grain <- list(NULL, NULL, NULL, NULL, NULL)
+grains <- list(town, s_senate, s_house, congress, county)
+names(grains) <- c("town", "s_senate", "s_house", "congress", "county")
+names(sr_per_grain) <- rep(paste0("srPer_", names(grains)))
+names(sr_per_grain) <- names(grains)
+
+
+#we can loop for the three grains with LEG_DISTRI (We will need to manual entry for the other two after that)
+for(d in seq_along(sr_per_grain)[2:4]){
+  sr_per_grain[[d]] <- over(aqua_invasives_spatial, grains[[d]])
+  sr_per_grain[[d]] <- cbind(sr_per_grain[[d]], aqua_invasives_spatial$state_scientific_name)
+  colnames(sr_per_grain[[d]])[colnames(sr_per_grain[[d]]) %in% 'aqua_invasives_spatial$state_scientific_name'] <- 'species'
+  sr_per_grain[[d]] <- group_by(sr_per_grain[[d]], LEG_DISTRI)
+  sr_per_grain[[d]] <- dplyr::summarise(sr_per_grain[[d]], sr=length(unique(species)))
+}
+
+#manual for town
+  sr_per_grain[[1]] <- over(aqua_invasives_spatial, grains[[1]])
+  sr_per_grain[[1]] <- cbind(sr_per_grain[[1]], aqua_invasives_spatial$state_scientific_name)
+  colnames(sr_per_grain[[1]])[colnames(sr_per_grain[[1]]) %in% 'aqua_invasives_spatial$state_scientific_name'] <- 'species'
+  sr_per_grain[[1]] <- group_by(sr_per_grain[[1]], MUNICIPAL_)
+  sr_per_grain[[1]] <- dplyr::summarise(sr_per_grain[[1]], sr=length(unique(species)))
+
+#manual for county
+  sr_per_grain[[5]] <- over(aqua_invasives_spatial, grains[[5]])
+  sr_per_grain[[5]] <- cbind(sr_per_grain[[5]], aqua_invasives_spatial$state_scientific_name)
+  colnames(sr_per_grain[[5]])[colnames(sr_per_grain[[5]]) %in% 'aqua_invasives_spatial$state_scientific_name'] <- 'species'
+  sr_per_grain[[5]] <- group_by(sr_per_grain[[5]], COUNTY_NUM)
+  sr_per_grain[[5]] <- dplyr::summarise(sr_per_grain[[5]], sr=length(unique(species)))
+  
+```
+
+Now we can plot density plots to compare grains:
+```{r plot sr curve congress}
+#Authors: NAH
+
+#plot the curves together
+#note that we could benefit from changing the alphas in the legend
+ggplot() +
+  geom_density(data = sr_per_grain[[1]], aes(sr, fill = names(sr_per_grain)[1]), alpha = 0.5) +
+  geom_density(data = sr_per_grain[[2]], aes(sr, fill = names(sr_per_grain)[2]), alpha = 0.5) +
+  geom_density(data = sr_per_grain[[3]], aes(sr, fill = names(sr_per_grain)[3]), alpha = 0.5) +
+  geom_density(data = sr_per_grain[[4]], aes(sr, fill = names(sr_per_grain)[4]), alpha = 0.5) +
+  geom_density(data = sr_per_grain[[5]], aes(sr, fill = names(sr_per_grain)[5]), alpha = 0.5) +
+  ggtitle(str_to_title(paste0("Species Richness Of Invasive Aquatic Species By Grain"))) +
+  labs(y = "Density", x = "sr") +
+  scale_fill_manual(name = "Grain", values = c("red", "blue", "green", "orange", "black"), labels = c("congress", "county", "s_house", "s_senate", "town"), guide = 'legend')
 ```
