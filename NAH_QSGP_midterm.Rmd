@@ -2,7 +2,10 @@
 title: "NAH_QSGP_midterm_notebook"
 author: "Nicholas Huron"
 date: "3/6/2018"
-output: html_document
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
 ---
 
 ```{r setup, results='hide', message=FALSE}
@@ -13,9 +16,11 @@ rm(list=ls())
 
 knitr::opts_chunk$set(echo = TRUE)
 #set the directory
-knitr::opts_knit$set(root.dir = "/Volumes/GoogleDrive/My Drive")
+#knitr::opts_knit$set(root.dir = "/Volumes/GoogleDrive/My Drive")
 #For PCs
 #knitr::opts_knit$set(root.dir = "G:/My Drive/")
+#for NAH ubuntu
+knitr::opts_knit$set(root.dir = "/home/nicholas/QSGP/")
 
 #load required packages
 library(tidyverse)
@@ -171,7 +176,7 @@ invasives2 %>%
 
 ###Verifying Dates and clean up the read in data (part 3)
 Using `View()` of `invasivescheck` below, one can check that dates are correct in the table of just the specified columns. With that table you can search for keywords in columns. In the comments column the word "date" was first searched, with over 700 entries. If one picked repetivitive words from thse 700 entries that . The next word search was "representative", which resulted in 110 entries. Of those 110 entries about half are dated in `obsdate` and `year` as 1980, however, in comments its states that "1980 is a repesentative of the time frame (1980-2007) when this county was known to begin hosting HWA". The next word search was "unknown" these resulted in 31 entries, 13 of these refer to the exact day/month is unkown but year is known. The last search word was "known", this also brought up "unknown" again. "known" had 218 entries, abut 50 of the entries refered to the "representative" word, and more than half refer to unknown day/month but known year.
-```{r check years}
+```{r check years, eval = FALSE}
 #Authors: NGS
 
 View(invasivescheck <- invasives2 %>% dplyr::mutate(year = str_extract(obsdate, "\\d{4}")) %>% 
@@ -277,9 +282,13 @@ srPerCongressional <- dplyr::summarise(srPerCongressional, sr=length(unique(spec
 invasivesCongressional <- congress
 invasivesCongressional@data <- left_join(invasivesCongressional@data, srPerCongressional, by='LEG_DISTRI') 
 
+#fix the data type of for R.linux (this snippet by NAH)
+if(Sys.info()["sysname"]=="Linux"){
+  invasivesCongressional@data$LEG_DISTRI <- as.character(invasivesCongressional@data$LEG_DISTRI)
+}
 
 invasivesCongressionalgg <- fortify(invasivesCongressional, region='LEG_DISTRI') 
-invasivesCongressionalgg <- left_join(invasivesCongressionalgg, invasivesCongressional@data, by=c("id" = 'LEG_DISTRI')) 
+invasivesCongressionalgg <- left_join(invasivesCongressionalgg, invasivesCongressional@data, by=c('id' = "LEG_DISTRI")) 
 
 p <- ggplot(data=invasivesCongressionalgg)+
   geom_polygon(aes(x=long, y=lat, group=group, fill=sr))+ 
@@ -341,6 +350,11 @@ sr_per_congressional_byspeciestype[[b]] <- add_row(sr_per_congressional_byspecie
   invasive_congressional_byspeciestype[[b]] <- congress
   invasive_congressional_byspeciestype[[b]]@data <- left_join(invasive_congressional_byspeciestype[[b]]@data, sr_per_congressional_byspeciestype[[b]], by = "LEG_DISTRI")
   
+#fix the data type of for R.linux (this snippet by NAH)
+if(Sys.info()["sysname"]=="Linux"){
+  invasive_congressional_byspeciestype[[b]]@data$LEG_DISTRI <- as.character(invasive_congressional_byspeciestype[[b]]@data$LEG_DISTRI)
+}
+
   invasive_congressional_gg_byspeciestype[[b]] <- fortify(invasive_congressional_byspeciestype[[b]], sr_per_congressional_byspeciestype[[b]], region = 'LEG_DISTRI')
   invasive_congressional_gg_byspeciestype[[b]] <- left_join(invasive_congressional_gg_byspeciestype[[b]], invasive_congressional_byspeciestype[[b]]@data, by = c("id" = 'LEG_DISTRI'))
 }
@@ -420,7 +434,7 @@ for(d in seq_along(sr_per_grain)[2:4]){
 ```
 
 Now, we visualize the distribution of SR for each grain.
-```{r plot sr curve congress}
+```{r plot sr curve grains}
 #Authors: NAH
 
 #plot the curves together

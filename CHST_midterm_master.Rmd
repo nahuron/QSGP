@@ -1,8 +1,11 @@
 ---
-title: "CHST_midterm"
-author: "Lisa Chemplayil, Nicholas Huron, Nicolina Sciarretta, Tom Thomas"
-date: "3/1/2018"
-output: html_document
+title: 'CHST_midterm: NEED TO CHANGE TITLE'
+date: "3/22/2018"
+author: Lisa Chemplayil, Nicholas Huron, Nicolina Sciarretta, Tom Thomas
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
 ---
 
 ```{r setup, results='hide', message=FALSE}
@@ -13,9 +16,11 @@ rm(list=ls())
 
 knitr::opts_chunk$set(echo = TRUE)
 #set the directory
-knitr::opts_knit$set(root.dir = "/Volumes/GoogleDrive/My Drive")
+#knitr::opts_knit$set(root.dir = "/Volumes/GoogleDrive/My Drive")
 #For PCs
 #knitr::opts_knit$set(root.dir = "G:/My Drive/")
+#for NAH ubuntu
+knitr::opts_knit$set(root.dir = "/home/nicholas/QSGP/")
 
 #load required packages
 library(tidyverse)
@@ -44,7 +49,7 @@ We load all of the shapefiles for now, just in case we need any of them later.
 invasives <- read_csv("./QuantSci_GP/data/PA_Invasive_Species/all_obs_imap_18Dec17_v2_0.csv", progress = FALSE)
 
 #read in shapefiles
-town <-readOGR(dsn = "./QuantSci_GP/data/PA_Invasive_Species/shapefiles", layer='PaMunicipalities2017_01')
+town      <-readOGR(dsn = "./QuantSci_GP/data/PA_Invasive_Species/shapefiles", layer='PaMunicipalities2017_01')
 s_senate  <- readOGR(dsn = "./QuantSci_GP/data/PA_Invasive_Species/shapefiles", layer='PaSenatorial2017_01')
 s_house   <- readOGR(dsn = "./QuantSci_GP/data/PA_Invasive_Species/shapefiles", layer='PaHouse2017_01')
 congress  <- readOGR(dsn = "./QuantSci_GP/data/PA_Invasive_Species/shapefiles", layer='PaCongressional2017_01')
@@ -171,7 +176,7 @@ invasives2 %>%
 
 ###Verifying Dates and clean up the read in data (part 3)
 Using `View()` of `invasivescheck` below, one can check that dates are correct in the table of just the specified columns. With that table you can search for keywords in columns. In the comments column the word "date" was first searched, with over 700 entries. If one picked repetivitive words from thse 700 entries that . The next word search was "representative", which resulted in 110 entries. Of those 110 entries about half are dated in `obsdate` and `year` as 1980, however, in comments its states that "1980 is a repesentative of the time frame (1980-2007) when this county was known to begin hosting HWA". The next word search was "unknown" these resulted in 31 entries, 13 of these refer to the exact day/month is unkown but year is known. The last search word was "known", this also brought up "unknown" again. "known" had 218 entries, abut 50 of the entries refered to the "representative" word, and more than half refer to unknown day/month but known year.
-```{r check years}
+```{r check years, eval = FALSE}
 #Authors: NGS
 
 View(invasivescheck <- invasives2 %>% dplyr::mutate(year = str_extract(obsdate, "\\d{4}")) %>% 
@@ -277,9 +282,13 @@ srPerCongressional <- dplyr::summarise(srPerCongressional, sr=length(unique(spec
 invasivesCongressional <- congress
 invasivesCongressional@data <- left_join(invasivesCongressional@data, srPerCongressional, by='LEG_DISTRI') 
 
+#fix the data type of for R.linux (this snippet by NAH)
+if(Sys.info()["sysname"]=="Linux"){
+  invasivesCongressional@data$LEG_DISTRI <- as.character(invasivesCongressional@data$LEG_DISTRI)
+}
 
 invasivesCongressionalgg <- fortify(invasivesCongressional, region='LEG_DISTRI') 
-invasivesCongressionalgg <- left_join(invasivesCongressionalgg, invasivesCongressional@data, by=c("id" = 'LEG_DISTRI')) 
+invasivesCongressionalgg <- left_join(invasivesCongressionalgg, invasivesCongressional@data, by=c('id' = "LEG_DISTRI")) 
 
 p <- ggplot(data=invasivesCongressionalgg)+
   geom_polygon(aes(x=long, y=lat, group=group, fill=sr))+ 
@@ -307,7 +316,7 @@ names(byspeciestype) <- c("turtles", "plants", "arthropods", "mollusc", "fish")
 
 Now that we have filtered versions of `aqua_invasives` for each `speciestype`, so we need to turn them into **SpatialPolygonsDataFrames** and calculate **Species Richness (SR)**. In summarizing the **SR** for each `speciestype`, we need to populate counties that are missing in the output with **SR** set to zero. This is done mid-loop, check the code comments for further details.
 
-```{r loop get SR by LEG_DISTRI, message = FALSE, warning = FALSE}
+```{r loop get SR by LEG_DISTRI, message = FALSE}
 #Authors: NGS, NAH
 #create new version of list that contains each species type
 spatial_byspeciestype <- byspeciestype
@@ -341,6 +350,11 @@ sr_per_congressional_byspeciestype[[b]] <- add_row(sr_per_congressional_byspecie
   invasive_congressional_byspeciestype[[b]] <- congress
   invasive_congressional_byspeciestype[[b]]@data <- left_join(invasive_congressional_byspeciestype[[b]]@data, sr_per_congressional_byspeciestype[[b]], by = "LEG_DISTRI")
   
+#fix the data type of for R.linux (this snippet by NAH)
+if(Sys.info()["sysname"]=="Linux"){
+  invasive_congressional_byspeciestype[[b]]@data$LEG_DISTRI <- as.character(invasive_congressional_byspeciestype[[b]]@data$LEG_DISTRI)
+}
+
   invasive_congressional_gg_byspeciestype[[b]] <- fortify(invasive_congressional_byspeciestype[[b]], sr_per_congressional_byspeciestype[[b]], region = 'LEG_DISTRI')
   invasive_congressional_gg_byspeciestype[[b]] <- left_join(invasive_congressional_gg_byspeciestype[[b]], invasive_congressional_byspeciestype[[b]]@data, by = c("id" = 'LEG_DISTRI'))
 }
@@ -364,7 +378,6 @@ for(c in seq_along(invasive_congressional_gg_byspeciestype)){
 }
 
 ```
-
 
 ###Univariate Distributions of richness for each grain and group
 
@@ -421,7 +434,7 @@ for(d in seq_along(sr_per_grain)[2:4]){
 ```
 
 Now, we visualize the distribution of SR for each grain.
-```{r plot sr curve for grains}
+```{r plot sr curve grains}
 #Authors: NAH
 
 #plot the curves together
@@ -486,5 +499,38 @@ ggplot() +
 
 ```
 
+Looking among species types, we do see several groups that almost approximate normal distributions (namely plants and mollusc). The rest appear to be multimodal, with some cases of `SR == 0` and at least one case of `SR > 0`. Notably, the two `speciestype`s that are closest to normal distribution shape also have the highest instances of species richness.
+
 In both cases, it does appear like normality may be improved somewhat. A Shapiro-Wilk Normality Test can help evaluation between untransformed and transformed data. With a loop, it is easy enough to produce a before/after table:
+
+```{r shapiro tests}
+#Authors: NAH
+swtest_grains <- tibble(untransformed.w = NA, logtransformed.w = NA, untransformed.p = NA, logtransformed.p = NA)
+for(e in seq_along(sr_per_grain)){
+  compare_holder <- c(NA, NA, NA, NA)
+  names(compare_holder) <- c("untransformed.w", "logtransformed.w", "untransformed.p", "logtransformed.p")
+  compare_holder[1] <- shapiro.test(sr_per_grain[[e]]$sr)$statistic
+  compare_holder[2] <- shapiro.test(log((sr_per_grain[[e]]$sr+1)))$statistic
+  compare_holder[3] <- shapiro.test(sr_per_grain[[e]]$sr)$p.value
+  compare_holder[4] <- shapiro.test(log((sr_per_grain[[e]]$sr+1)))$p.value
+  swtest_grains <- bind_rows(swtest_grains, compare_holder)
+swtest_grains <- swtest_grains %>% filter(complete.cases(.))
+}
+
+(swtest_grains)
+
+swtest_speciestype <- tibble(untransformed.w = NA, logtransformed.w = NA, untransformed.p = NA, logtransformed.p = NA)
+for(e in seq_along(sr_per_congressional_byspeciestype)){
+  compare_holder <- c(NA, NA, NA, NA)
+  names(compare_holder) <- c("untransformed.w", "logtransformed.w", "untransformed.p", "logtransformed.p")
+  compare_holder[1] <- shapiro.test(sr_per_congressional_byspeciestype[[e]]$sr)$statistic
+  compare_holder[2] <- shapiro.test(log((sr_per_congressional_byspeciestype[[e]]$sr+1)))$statistic
+  compare_holder[3] <- shapiro.test(sr_per_congressional_byspeciestype[[e]]$sr)$p.value
+  compare_holder[4] <- shapiro.test(log((sr_per_congressional_byspeciestype[[e]]$sr+1)))$p.value
+  swtest_speciestype <- bind_rows(swtest_speciestype, compare_holder)
+swtest_speciestype <- swtest_speciestype %>% filter(complete.cases(.))
+}
+
+(swtest_speciestype)
+```
 
