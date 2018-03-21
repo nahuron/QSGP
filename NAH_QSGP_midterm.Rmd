@@ -169,7 +169,7 @@ As it turns out, only 10 of these rows lack a confident year of observation, so 
 ```{r mutate years}
 #Authors: NAH
 
-invasives2 %>%
+invasives2 <- invasives2 %>%
   dplyr::mutate(year = str_extract(obsdate, "\\d{4}"))
 ```
 
@@ -535,3 +535,60 @@ swtest_speciestype <- swtest_speciestype %>% filter(complete.cases(.)) %>% round
 In reviewing these tables, it is clear that no untransformed distribution for `grain` was normal (p-value < 0.05), but the transformation did improve normality across the board, with only `s_senate` becoming truly normal according to this test. This improvement of normality was not the case for `speciestype` plots, which had mixed transformation results. Initially, both `plants` and `mollusc` were normal according to Shapiro-Wilk values, but the transformed `mollusc` distribution was not. `Turtles` did not change, but this was an expected result, as the only species richness values in this group are binary (only one species, values of `0` or `1`). The remaining two distributions did improve, but not enough to be considered normal.
 
 Upon reviewing the previous figures, it is evident that there a number of outliers associated with NW Pennsylvania, specifically **District 3/Erie County**. There are a disproportionate number of aquatic **plant** and **fish** species in these areas, which appear to contribute to the visible outliers on the right side of many of the distributions.
+
+##III. EDA - Multivariate Covariation
+###Does the rate of human population growth correlate to the rate of species invasions? Does your answer depend on how you calculated rates? Does population size or present demographics better explain invasive species richness than rates?
+
+```{r read in census data}
+#Authors: NAH
+census <- read_csv("./QSGP_CHST/pa_census.csv", skip = 6) 
+census <- census %>%
+  dplyr::select(`2010 State, County & Munic. FIPS Code`:`Change_2000_2010`) %>%
+  dplyr::select(`2010 State, County & Munic. FIPS Code`, `Geographic Area`, Number_2000, Number_2010, Change_2000_2010)
+```
+
+```{r calculate pop growth rate}
+#Authors: NAH
+census <- census %>%
+  mutate(growth_rate = ((Number_2010 - Number_2000)/Number_2000))
+```
+
+Look at Counties for comparing pop rate vs SR
+- calculate cum SR as of 2000
+- calculate cum SR as of 2010
+- make a table, calculate rate change
+
+```{r cum SR by county 2000}
+#Authors: NAH
+
+#by 2000
+aqua_2000 <- aqua_invasives %>%
+  filter(year <= 2000)
+aqua_spatial_2000 <- aqua_2000
+coordinates(aqua_spatial_2000) <- ~long+lat
+proj4string(aqua_spatial_2000) <- projection('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0')
+
+srPerCounty2000 <- over(aqua_spatial_2000, county)
+srPerCounty2000 <- cbind(srPerCounty2000, aqua_spatial_2000$state_scientific_name)
+colnames(srPerCounty2000)[colnames(srPerCounty2000) %in% 'aqua_spatial_2000$state_scientific_name'] <- 'species' 
+srPerCounty2000 <- group_by(srPerCounty2000, COUNTY_NAM) 
+srPerCounty2000 <- dplyr::summarise(srPerCounty2000, sr=length(unique(species)))
+
+#by 2010
+aqua_2010 <- aqua_invasives %>%
+  filter(year <= 2010)
+aqua_spatial_2010 <- aqua_2010
+coordinates(aqua_spatial_2010) <- ~long+lat
+proj4string(aqua_spatial_2010) <- projection('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0')
+
+srPerCounty2010 <- over(aqua_spatial_2010, county)
+srPerCounty2010 <- cbind(srPerCounty2010, aqua_spatial_2010$state_scientific_name)
+colnames(srPerCounty2010)[colnames(srPerCounty2010) %in% 'aqua_spatial_2010$state_scientific_name'] <- 'species' 
+srPerCounty2010 <- group_by(srPerCounty2010, COUNTY_NAM) 
+srPerCounty2010 <- dplyr::summarise(srPerCounty2010, sr=length(unique(species)))
+
+#now join them by COUNTY_NAM
+srPerCounty2000_2010 <- inner_join(srPerCounty2000, srPerCounty2010, by = "COUNTY_NAM", suffix = c("_2000", "_2010"))
+
+```
+

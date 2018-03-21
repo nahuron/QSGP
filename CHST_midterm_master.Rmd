@@ -547,7 +547,7 @@ In reviewing these tables, it is clear that no untransformed distribution for `g
 Upon reviewing the previous figures, it is evident that there a number of outliers associated with NW Pennsylvania, specifically **District 3/Erie County**. There are a disproportionate number of aquatic **plant** and **fish** species in these areas, which appear to contribute to the visible outliers on the right side of many of the distributions.
 
 ##III. EDA - Multivariate Covariation
-
+###Which political party represents areas with more invasive species? If you find a difference, what is a possible explanation?
 
 ```{r}
 #Authors: NGS
@@ -585,4 +585,4 @@ DR_invasives
 #Since the species richness in democratic areas is significantly lower than republican areas the color gradient shades in with red rather then blue and therefore gives us a purple color for the democratic areas. So to reiterate, Republican areas are represented in shades of red and the Democratic areas are represented in light purple/white.
 ```
 
-
+Based on our findings of the species richness of our political parties map, we can deduct that Republican areas tend to have a higher species richness of invasive species. On the other hand, the Democratic areas represent lower species richness of invasive species.  There are many factors that contribute to this relationship. For example, the fact that as of the most recent presidential election, Pennsylvania is slightly more red than blue based on the election results. Given this result, the Republican areas tend to have the highest species richness of invasive species. This corresponds to the fact that it is a mostly rural area and therefore is an ideal environment for invasive species to spread. By definition an invasive species is a species that is usually non-native that becomes established in a new area and spreads without further human intervention beyond its point of initial release. In order for an invasive species to be termed an invasive species it must complete several stages. First, it has to be introduced to an area, then it must colonize, after which it then has to be established by reproducing and finally it has to spread. Once it spreads, it is now an invasive specie.   On the contrary, the lower species richness of invasive species corresponds to the Democratic areas, one of which is Philadelphia County which is an urban area and would mean that it is a  less suitable environment for invasive species to be introduced, colonize, establish themselves and ultimately spread.
