@@ -449,7 +449,7 @@ ggplot() +
   scale_fill_manual(name = "Grain", values = c("red", "blue", "green", "orange", "black"), labels = c("congress", "county", "s_house", "s_senate", "town"), guide = 'legend')
 ```
 
-In looking at each of the grains, it is clear that there are differences in SR by grain. While the means of the distributions appear to cluster around 0-10 (estimated visually), none overlap perfectly. Some appear shifted slightly relative to the rest (e.g., congress is shifted right of state house).
+In looking at each of the grains, it is clear that there are differences in SR by grain. While the means of the distributions appear to cluster around 0--10 (estimated visually), none overlap perfectly. Some appear shifted slightly relative to the rest (e.g., congress is shifted right of state house). Notably, there appear to be several outliers per group, located in the right tail (higher values for species richness). These higher values range from 15--20 species.
 
 Let's repeat the process for different `speciestype`s for the `congress` grain. Note that the object `sr_per_congressional_byspeciestype` contains all of the data we need to make the comparison! We simply need to create a similar plot to the one for grains above.
 ```{r plot SR per speciestype in congress}
@@ -468,9 +468,9 @@ ggplot() +
   
 ```
 
-Looking among species types, we do see several groups that almost approximate normal distributions (namely plants and mollusc). The rest appear to be multimodal, with some cases of `SR == 0` and at least one case of `SR > 0`. Notably, the two `speciestype`s that are closest to normal distribution shape also have the highest instances of species richness.
+Looking among species types, we do see several groups that almost approximate normal distributions (namely `plants` and `mollusc`). The rest appear to be multimodal, with some cases of `SR == 0` and at least one case of `SR > 0`. Notably, the two `speciestype`s that are closest to normal distribution shape also have the highest instances of species richness. As for outliers, `fish` appears to have the only distinct outlier to the right of the main distribution.
 
-For both `grain` and `speciestype`, it is clear that distributions are not exactly normal, so it is worth exploring data transformation. In an effort to normalize these data, let's try a **log** transformation first, since it will tighten some of the wider distributions. Since we have values of `0`, adding `1` to each `SR` value is necessary before transformation.
+For both `grain` and `speciestype`, it is clear that distributions are not exactly normal, so it is worth exploring data transformation. In an effort to normalize these data, let's try a **natural log** transformation first, since it will tighten some of the wider distributions. Since we have values of `0`, adding `1` to each `SR` value is necessary before transformation.
 
 ```{r plot log transform grains}
 #Authors: NAH
@@ -499,39 +499,39 @@ ggplot() +
 
 ```
 
-Looking among species types, we do see several groups that almost approximate normal distributions (namely plants and mollusc). The rest appear to be multimodal, with some cases of `SR == 0` and at least one case of `SR > 0`. Notably, the two `speciestype`s that are closest to normal distribution shape also have the highest instances of species richness.
-
-In both cases, it does appear like normality may be improved somewhat. A Shapiro-Wilk Normality Test can help evaluation between untransformed and transformed data. With a loop, it is easy enough to produce a before/after table:
+In both cases, it does appear like normality may be improved in some cases, howeve this is not the case for all groupings (`s_house`, `county`, and `town` for `grain` and `mollusc` for `speciestype` in particular). Additionally, outliers appear to be less severe, but still exist. A Shapiro-Wilk Normality Test can help evaluation between untransformed and transformed data. With a loop, it is easy enough to produce a before/after table:
 
 ```{r shapiro tests}
 #Authors: NAH
-swtest_grains <- tibble(untransformed = NA, logtransformed = NA, untransformed.p = NA, logtransformed.p = NA)
+swtest_grains <- tibble(untransformed.w = NA, untransformed.p = NA, logtransformed.w = NA, logtransformed.p = NA)
 for(e in seq_along(sr_per_grain)){
   compare_holder <- c(NA, NA, NA, NA)
-  names(compare_holder) <- c("untransformed", "logtransformed", "untransformed.p", "logtransformed.p")
+  names(compare_holder) <- c("untransformed.w", "untransformed.p", "logtransformed.w", "logtransformed.p")
   compare_holder[1] <- shapiro.test(sr_per_grain[[e]]$sr)$statistic
-  compare_holder[2] <- shapiro.test(log((sr_per_grain[[e]]$sr+1)))$statistic
-  compare_holder[3] <- shapiro.test(sr_per_grain[[e]]$sr)$p.value
+  compare_holder[2] <- shapiro.test(sr_per_grain[[e]]$sr)$p.value
+  compare_holder[3] <- shapiro.test(log((sr_per_grain[[e]]$sr+1)))$statistic
   compare_holder[4] <- shapiro.test(log((sr_per_grain[[e]]$sr+1)))$p.value
   swtest_grains <- bind_rows(swtest_grains, compare_holder)
-swtest_grains <- swtest_grains %>% filter(complete.cases(.))
+swtest_grains <- swtest_grains %>% filter(complete.cases(.)) %>% round(., 3)
 }
 
-(swtest_grains)
+(swtest_grains <- as_tibble(cbind(grain = names(sr_per_grain), swtest_grains)))
 
-swtest_speciestype <- tibble(untransformed = NA, logtransformed = NA, untransformed.p = NA, logtransformed.p = NA)
+swtest_speciestype <- tibble(untransformed.w = NA, untransformed.p = NA, logtransformed.w = NA, logtransformed.p = NA)
 for(e in seq_along(sr_per_congressional_byspeciestype)){
   compare_holder <- c(NA, NA, NA, NA)
-  names(compare_holder) <- c("untransformed", "logtransformed", "untransformed.p", "logtransformed.p")
+  names(compare_holder) <- c("untransformed.w", "untransformed.p", "logtransformed.w", "logtransformed.p")
   compare_holder[1] <- shapiro.test(sr_per_congressional_byspeciestype[[e]]$sr)$statistic
-  compare_holder[2] <- shapiro.test(log((sr_per_congressional_byspeciestype[[e]]$sr+1)))$statistic
-  compare_holder[3] <- shapiro.test(sr_per_congressional_byspeciestype[[e]]$sr)$p.value
+  compare_holder[2] <- shapiro.test(sr_per_congressional_byspeciestype[[e]]$sr)$p.value
+  compare_holder[3] <- shapiro.test(log((sr_per_congressional_byspeciestype[[e]]$sr+1)))$statistic
   compare_holder[4] <- shapiro.test(log((sr_per_congressional_byspeciestype[[e]]$sr+1)))$p.value
   swtest_speciestype <- bind_rows(swtest_speciestype, compare_holder)
-swtest_speciestype <- swtest_speciestype %>% filter(complete.cases(.))
+swtest_speciestype <- swtest_speciestype %>% filter(complete.cases(.)) %>% round(., 3)
 }
 
-(swtest_speciestype)
+(swtest_speciestype <- as_tibble(cbind(speciestype = names(sr_per_congressional_byspeciestype), swtest_speciestype)))
 ```
 
+In reviewing these tables, it is clear that no untransformed distribution for `grain` was normal (p-value < 0.05), but the transformation did improve normality across the board, with only `s_senate` becoming truly normal according to this test. This improvement of normality was not the case for `speciestype` plots, which had mixed transformation results. Initially, both `plants` and `mollusc` were normal according to Shapiro-Wilk values, but the transformed `mollusc` distribution was not. `Turtles` did not change, but this was an expected result, as the only species richness values in this group are binary (only one species, values of `0` or `1`). The remaining two distributions did improve, but not enough to be considered normal.
 
+Upon reviewing the previous figures, it is evident that there a number of outliers associated with NW Pennsylvania, specifically **District 3/Erie County**. There are a disproportionate number of aquatic **plant** and **fish** species in these areas, which appear to contribute to the visible outliers on the right side of many of the distributions.
