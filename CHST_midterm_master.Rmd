@@ -1,5 +1,5 @@
 ---
-title: 'CHST_midterm: NEED TO CHANGE TITLE'
+title: 'Aquatic Invasive Species of Pennsylvania: NEED TO CHANGE TITLE'
 date: "3/22/2018"
 author: Lisa Chemplayil, Nicholas Huron, Nicolina Sciarretta, Tom Thomas
 output: 
@@ -8,7 +8,10 @@ output:
     toc_depth: 3
 ---
 
-```{r setup, results='hide', message=FALSE}
+##Abstract
+TEXT NEEDS TO GO HERE (~50-100 word abstract that describes your findings on Pennsylvania’s Invasive Species Problem to a general audience.)
+
+```{r setup, results='hide', message=FALSE, echo = FALSE}
 #Authors: TT, NGS, NAH
 
 #clear workspace first
@@ -38,12 +41,15 @@ library(maptools)
 #setwd("G:/My Drive/")
 ```
 
-##I. WRANGLE the imap data
-###Read in invasives dataset and polygon shapefiles
+##I. Wrangle Invasive Species Records And PA Spatial Data
+###Load Data
 
-We load all of the shapefiles for now, just in case we need any of them later.
-```{r read data, results='hide', message=FALSE}
+An initial clean up available invasive and Pennsylvania (PA) spatial datasets was performed after obtaining both datasets. The invasive records (`invasives`) were obtained from the *Pennsylvania iMapInvasives* program ([website](https://www.paimapinvasives.org/)). While all shapefiles (PA spatial data) were loaded, we focused on the 18 **federal congressional districts** as drawn from the 2010 US Census data (`congress`). 
+
+```{r read data, results='hide', message=FALSE, echo = FALSE}
 #Authors: TT, NGS, NAH
+
+#Read in invasives dataset and polygon shapefiles
 
 #read in invasives
 invasives <- read_csv("./QuantSci_GP/data/PA_Invasive_Species/all_obs_imap_18Dec17_v2_0.csv", progress = FALSE)
@@ -56,20 +62,31 @@ congress  <- readOGR(dsn = "./QuantSci_GP/data/PA_Invasive_Species/shapefiles", 
 county    <- readOGR(dsn = "./QuantSci_GP/data/PA_Invasive_Species/shapefiles", layer='PaCounty2017_01')
 ```
 
-###Clean up the read in data (Part 1)
+###Clean Up Data i: Consistent References
 
-We rename the lat/long coordinate columns for ease of reference.
-```{r rename latlong}
+Prior to  analyses, we investigated the content of each dataset.
+
+The focal SpatialPolygonsDataFrame object, `congress`, contains information on the 18 districts. The `data` section contains the following columns that are relevant for our analyses:
+
+  1. LEG_DISTRI [factor]: the unique number identifier for each district
+  5. PARTY  [factor]: the one letter code for the political party of each district's representative
+  
+This object also contains a `polygons` section that gives spatial data that helps draw each district. The `ID` identifies each polygon to a district (although it starts counting at zero and connects through the `plotOrder` section). There is also a `bbox` section that defines the plot area and a `proj4string` section that contains the coordinate reference system to translate latitude and longitude values to the plot.
+
+###(INSERT MORE ON DATASETS HERE, INCLUDING INVASIVES!!!)
+
+Dataset evaluation indicated a need for clean up before inferring invasive species results for PA. This involved changing naming convention of some sections (e.g., changing `obsorigxcoord` to `long` for longitude) and ensuring that a consistent *coordinate reference system* (**CRS**) was in place across all datasets.
+```{r rename latlong, echo = FALSE, results = 'hide'}
 #Authors: TT
 
 colnames(invasives)[colnames(invasives) %in% 'obsorigxcoord'] <- 'long'
 colnames(invasives)[colnames(invasives) %in% 'obsorigycoord'] <- 'lat'
 ```
 
-Now, we need to make sure that all of the coordinate systems play nicely by standardizing the coordinate reference systems for shapefiles.
-```{r standardize shapefile CRS}
+```{r standardize shapefile CRS, echo = FALSE, results = 'hide'}
 #Authors: TT
 
+#standardize the coordinate reference systems for shapefiles.
 county <- spTransform(county, CRS('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0'))
 s_senate <- spTransform(s_senate, CRS('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0'))
 congress <- spTransform(congress, CRS('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0'))
@@ -77,31 +94,26 @@ town <- spTransform(town, CRS('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 
 s_house <- spTransform(s_house, CRS('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0'))
 ```
 
-###Identify and note data contained in each SpatialPolygonsDataFrame. Select, arrange, rename, or mutate data as needed.
+###Clean Up Data ii: The Spotted Lanternfly
 
-We focus on the grain of federal congressional districts. In the SpatialPolygonsDataFrame object `congress`, which contains information on the 18 districts. The `data` section contains the following columns that are relevant for our analyses:
-  1. LEG_DISTRI [factor]: the unique number identifier for each district
-  5. PARTY  [factor]: the one letter code for the political party of each district's representative
-  
-This object also contains a `polygons` section that gives spatial data that helps draw each district. The `ID` identifies each polygon to a district (although it starts counting at zero and connects through the `plotOrder` section). There is also a `bbox` section that defines the plot area and a `proj4string` section that contains the coordinate reference system to translate latitude and longitude values to the plot.
+In our communication with colleagues, we learned that the spotted lanternfly (*Lycorma delicatula*) is not tracked reliably in `invasives`.
 
-
-###Filter out data on the spotted lanternfly from `invasives`
-
-First, we should confirm the best way to filter out, either by scientific name or common name. To do this, we will summarise the data that have common names containing the word `"fly"`, just to make sure nothing gets lost in syntax variation.
-```{r EDA lantern fly}
+First, we summarized the data that have common names containing the word `"fly"`, just to make sure nothing was lost in syntax variation.
+```{r EDA lantern fly, echo = FALSE}
 #Authors: NAH
 
 invasives %>%
   group_by(state_scientific_name, stateCommonName) %>%
   count() %>%
   filter(str_detect(stateCommonName, pattern = "fly")) %>%
-  arrange(desc(n))
+  arrange(desc(n)) %>%
+  knitr::kable(., col.names = c("Scientific Name", "Common Name", "Number of Observations"))
 ```
 
->It is clear that there are a few observations with fly, and it looks like `"Spotted Lanternfly"` is the consistent common name for this species, but we will stick to the scientific name to be certain when we `filter` it out below in our new `invasives` object (called `invasives2`).
+>It is clear that there are a few observations with fly, and it looks like `"Spotted Lanternfly"` is the consistent common name for this species, but we stuck to the scientific name to be certain when we `filter`ed it out in our new `invasives` object (called `invasives2`).
 
-```{r filter}
+We then removed all observations matching *Lycorma delicatula*, which resulted in the removal of the **6 observations**, leaving us with 9815 total observations.
+```{r filter lanternfly, echo = FALSE, results = 'hide'}
 #Authors: TT, NAH
 
 #get original row count
@@ -114,11 +126,10 @@ invasives2 <- invasives %>%
 nrow(invasives2)
 ```
 
-###Clean up the read in data (Part 2)
+###Clean Up Data iii: Reliable Observation Years
 
-We know from previous communications that the `invasives$obsdate` variable contains data that are not equally reliable. To be certain that we use dates with reliable years only, we are going to clean `obsdate` and then `mutate()` a new variable (called `year`) that we will use for temporal analyses. To do so, we can search the `obscomments_long` entries for rows from `obsdate` that need tidying!
-
-```{r clean obsdate}
+We know from previous communications with the *Pennsylvania iMapInvasives* program that the date of observation (`obsdate`) variable contains data that are not all reliable. To be certain that we use dates with reliable years only, we cleaned `obsdate` and then `mutate`ed a new variable (called `year`) that was used for temporal analyses.
+```{r clean obsdate, echo = FALSE, results = 'hide'}
 #Authors: NAH
 
 #explore obsdate and obscomments_long
@@ -135,8 +146,8 @@ invasives2 %>%
   nrow()
 ```
 
-We now can confirm that there are 724 rows that contain some reference to the date in the comments section. These likely represent dates that need fixing or may need to be removed from the dataset. We also realize we need to format the dates at some point. First, let us find the true unknowns/uncertains by using the keywords `"unknown"` and `"placeholder"`/`"place-holder"`.
-```{r find unknowns}
+We confirmed that there are 724 rows that contain some reference to the date in the comments section. These likely represent dates that need fixing or removal from the dataset. To locate the true unknowns/uncertains, we first used the keywords `"unknown"` and `"placeholder"`/`"place-holder"`.
+```{r find unknowns, echo = FALSE, results = 'hide'}
 #Authors: NAH
 
 invasives2 %>%
@@ -146,8 +157,8 @@ invasives2 %>%
   arrange(obscomments_long)
 ```
 
-Of the 724 rows, only 56 have the keywords we are worried about. These 56 rows represent dates that may be slated for removal. The other 668 are likely ambiguous but can be determined to year with confidence. Now we have to trim the former before verifying the years for `obsdate` values in the latter. We can use `obsid` values as our identifiers for the rows we need to remove (manually spot-checked the 56 rows).
-```{r rm questionable date rows}
+Of the 724 rows, only **56** had the keywords we are worried about. These rows represent dates that may be slated for removal. The other 668 are likely ambiguous but could be determined to year with confidence. We trimmed the former before verifying the years for `obsdate` values in the latter. We then used `obsid` values as our identifiers for the rows we needed to remove (manually spot-checked the 56 rows).
+```{r rm questionable date rows, echo = FALSE, results = 'hide'}
 #Authors: NAH
 
 #check the nrows of invasives2 to start
@@ -164,19 +175,10 @@ invasives2 <- invasives2 %>%
 nrow(invasives2)
 ```
 
-As it turns out, only 10 of these rows lack a confident year of observation, so we removed them from this dataset. The rest may need year spot checking... but for now, we  can create a new column, `year` that contains the year of each obsdate.
+As it turned out, only 10 of the rows in the 56 lacked a confident year of observation, so we removed them, resulting in 9805 observations. 
 
-```{r mutate years}
-#Authors: NAH
-
-invasives2 %>%
-  dplyr::mutate(year = str_extract(obsdate, "\\d{4}"))
-```
-
-
-###Verifying Dates and clean up the read in data (part 3)
-Using `View()` of `invasivescheck` below, one can check that dates are correct in the table of just the specified columns. With that table you can search for keywords in columns. In the comments column the word "date" was first searched, with over 700 entries. If one picked repetivitive words from thse 700 entries that . The next word search was "representative", which resulted in 110 entries. Of those 110 entries about half are dated in `obsdate` and `year` as 1980, however, in comments its states that "1980 is a repesentative of the time frame (1980-2007) when this county was known to begin hosting HWA". The next word search was "unknown" these resulted in 31 entries, 13 of these refer to the exact day/month is unkown but year is known. The last search word was "known", this also brought up "unknown" again. "known" had 218 entries, abut 50 of the entries refered to the "representative" word, and more than half refer to unknown day/month but known year.
-```{r check years, eval = FALSE}
+However, this was not the end of cleaning `invasives` by `obsdate`. Using `View()` of `invasivescheck` below, we checked that dates are correct in the table by searching for keywords for unreliable daates by eye. In the `obscomments_long` column, the word *representative* was searched, which resulted in 110 entries. Of those 110 entries about half are dated in `obsdate` as 1980. However, in `obscomments_long`, it states that `"1980 is a repesentative of the time frame (1980-2007) when this county was known to begin hosting HWA"`, indicating a clear problem of reliable **year**. The next word searched was *unknown*, which produced 31 entries, 13 of which conclude that the exact day/month is not known but the year is. The last search word was *known*, this also brought up *unknown* again. *known* had 218 entries, 50 of which referred to the "representative" word, and more than half indicate unknown day/month but known year.
+```{r check years, eval = FALSE, echo = FALSE, results = 'hide'}
 #Authors: NGS
 
 View(invasivescheck <- invasives2 %>% dplyr::mutate(year = str_extract(obsdate, "\\d{4}")) %>% 
@@ -184,8 +186,8 @@ View(invasivescheck <- invasives2 %>% dplyr::mutate(year = str_extract(obsdate, 
 
 ```
 
-According to these observations the years do match the comments, however we need to remove the observations that have a date range of 1980-2007. 
-```{r remove representative}
+According to these observations the years do match the comments, but the aforementioned `1980-2007` dates required removal. This whittled down `invasives2` to **9756** observations.
+```{r remove representative, echo = FALSE, results = 'hide'}
 #Authors: NAH
 
 #filter out the observations with the 1980-2007 date range. This can be done with a match of "representative", but when observing the filtration of View(), there are some other unintended rows that are fine for dates. Instead, let's filter with that date range in the comments, "1980-2007" as well!
@@ -209,6 +211,15 @@ invasives2 <- invasives2 %>%
 nrow(invasives2)
 
 ```
+
+We then created the new `year` column for temporal analyses, thereby resolving `obsdate` inconsistencies and permitting us to begin exploring the data.
+```{r mutate years, echo = FALSE, results = 'hide'}
+#Authors: NAH
+
+invasives2 %>%
+  dplyr::mutate(year = str_extract(obsdate, "\\d{4}"))
+```
+
 
 ##II. EDA - Univariate  
 ###Identify focal species
