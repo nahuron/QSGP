@@ -307,7 +307,7 @@ names(byspeciestype) <- c("turtles", "plants", "arthropods", "mollusc", "fish")
 
 Now that we have filtered versions of `aqua_invasives` for each `speciestype`, so we need to turn them into **SpatialPolygonsDataFrames** and calculate **Species Richness (SR)**. In summarizing the **SR** for each `speciestype`, we need to populate counties that are missing in the output with **SR** set to zero. This is done mid-loop, check the code comments for further details.
 
-```{r loop get SR by LEG_DISTRI, message = FALSE}
+```{r loop get SR by LEG_DISTRI, message = FALSE, warning = FALSE}
 #Authors: NGS, NAH
 #create new version of list that contains each species type
 spatial_byspeciestype <- byspeciestype
@@ -392,7 +392,6 @@ Let's create a list with the SR for all grains:
 sr_per_grain <- list(NULL, NULL, NULL, NULL, NULL)
 grains <- list(town, s_senate, s_house, congress, county)
 names(grains) <- c("town", "s_senate", "s_house", "congress", "county")
-names(sr_per_grain) <- rep(paste0("srPer_", names(grains)))
 names(sr_per_grain) <- names(grains)
 
 
@@ -421,12 +420,11 @@ for(d in seq_along(sr_per_grain)[2:4]){
   
 ```
 
-Now we can plot density plots to compare grains:
-```{r plot sr curve congress}
+Now, we visualize the distribution of SR for each grain.
+```{r plot sr curve for grains}
 #Authors: NAH
 
 #plot the curves together
-#note that we could benefit from changing the alphas in the legend
 ggplot() +
   geom_density(data = sr_per_grain[[1]], aes(sr, fill = names(sr_per_grain)[1]), alpha = 0.5) +
   geom_density(data = sr_per_grain[[2]], aes(sr, fill = names(sr_per_grain)[2]), alpha = 0.5) +
@@ -437,3 +435,56 @@ ggplot() +
   labs(y = "Density", x = "sr") +
   scale_fill_manual(name = "Grain", values = c("red", "blue", "green", "orange", "black"), labels = c("congress", "county", "s_house", "s_senate", "town"), guide = 'legend')
 ```
+
+In looking at each of the grains, it is clear that there are differences in SR by grain. While the means of the distributions appear to cluster around 0-10 (estimated visually), none overlap perfectly. Some appear shifted slightly relative to the rest (e.g., congress is shifted right of state house).
+
+Let's repeat the process for different `speciestype`s for the `congress` grain. Note that the object `sr_per_congressional_byspeciestype` contains all of the data we need to make the comparison! We simply need to create a similar plot to the one for grains above.
+```{r plot SR per speciestype in congress}
+#Authors: NAH
+
+#plot the curves together
+ggplot() +
+  geom_density(data = sr_per_congressional_byspeciestype[[1]], aes(sr, fill = names(sr_per_congressional_byspeciestype)[1]), alpha = 0.5) +
+  geom_density(data = sr_per_congressional_byspeciestype[[2]], aes(sr, fill = names(sr_per_congressional_byspeciestype)[2]), alpha = 0.5) +
+  geom_density(data = sr_per_congressional_byspeciestype[[3]], aes(sr, fill = names(sr_per_congressional_byspeciestype)[3]), alpha = 0.5) +
+  geom_density(data = sr_per_congressional_byspeciestype[[4]], aes(sr, fill = names(sr_per_congressional_byspeciestype)[4]), alpha = 0.5) +
+  geom_density(data = sr_per_congressional_byspeciestype[[5]], aes(sr, fill = names(sr_per_congressional_byspeciestype)[5]), alpha = 0.5) +
+  ggtitle(str_to_title(paste0("Species Richness Of Invasive Aquatic Species By Species Type"))) +
+  labs(y = "Density", x = "sr") +
+  scale_fill_manual(name = "Species Type", values = c("red", "blue", "green", "orange", "black"), labels = c("arthropods", "fish", "mollusc", "plants", "turtles"), guide = 'legend')
+  
+```
+
+Looking among species types, we do see several groups that almost approximate normal distributions (namely plants and mollusc). The rest appear to be multimodal, with some cases of `SR == 0` and at least one case of `SR > 0`. Notably, the two `speciestype`s that are closest to normal distribution shape also have the highest instances of species richness.
+
+For both `grain` and `speciestype`, it is clear that distributions are not exactly normal, so it is worth exploring data transformation. In an effort to normalize these data, let's try a **log** transformation first, since it will tighten some of the wider distributions. Since we have values of `0`, adding `1` to each `SR` value is necessary before transformation.
+
+```{r plot log transform grains}
+#Authors: NAH
+ggplot() +
+  geom_density(data = sr_per_grain[[1]], aes(log(sr+1), fill = names(sr_per_grain)[1]), alpha = 0.5) +
+  geom_density(data = sr_per_grain[[2]], aes(log(sr+1), fill = names(sr_per_grain)[2]), alpha = 0.5) +
+  geom_density(data = sr_per_grain[[3]], aes(log(sr+1), fill = names(sr_per_grain)[3]), alpha = 0.5) +
+  geom_density(data = sr_per_grain[[4]], aes(log(sr+1), fill = names(sr_per_grain)[4]), alpha = 0.5) +
+  geom_density(data = sr_per_grain[[5]], aes(log(sr+1), fill = names(sr_per_grain)[5]), alpha = 0.5) +
+  ggtitle(str_to_title(paste0("Species Richness Of Invasive Aquatic Species By Grain"))) +
+  labs(y = "Density", x = "ln(sr+1)") +
+  scale_fill_manual(name = "Grain", values = c("red", "blue", "green", "orange", "black"), labels = c("congress", "county", "s_house", "s_senate", "town"), guide = 'legend')
+```
+
+```{r plot log transform speciestype}
+#Authors: NAH
+ggplot() +
+  geom_density(data = sr_per_congressional_byspeciestype[[1]], aes(log(sr+1), fill = names(sr_per_congressional_byspeciestype)[1]), alpha = 0.5) +
+  geom_density(data = sr_per_congressional_byspeciestype[[2]], aes(log(sr+1), fill = names(sr_per_congressional_byspeciestype)[2]), alpha = 0.5) +
+  geom_density(data = sr_per_congressional_byspeciestype[[3]], aes(log(sr+1), fill = names(sr_per_congressional_byspeciestype)[3]), alpha = 0.5) +
+  geom_density(data = sr_per_congressional_byspeciestype[[4]], aes(log(sr+1), fill = names(sr_per_congressional_byspeciestype)[4]), alpha = 0.5) +
+  geom_density(data = sr_per_congressional_byspeciestype[[5]], aes(log(sr+1), fill = names(sr_per_congressional_byspeciestype)[5]), alpha = 0.5) +
+  ggtitle(str_to_title(paste0("Species Richness Of Invasive Aquatic Species By Species Type"))) +
+  labs(y = "Density", x = "ln(sr+1)") +
+  scale_fill_manual(name = "Species Type", values = c("red", "blue", "green", "orange", "black"), labels = c("arthropods", "fish", "mollusc", "plants", "turtles"), guide = 'legend')
+
+```
+
+In both cases, it does appear like normality may be improved somewhat. A Shapiro-Wilk Normality Test can help evaluation between untransformed and transformed data. With a loop, it is easy enough to produce a before/after table:
+
