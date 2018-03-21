@@ -19,11 +19,11 @@ rm(list=ls())
 
 knitr::opts_chunk$set(echo = TRUE)
 #set the directory
-#knitr::opts_knit$set(root.dir = "/Volumes/GoogleDrive/My Drive")
+knitr::opts_knit$set(root.dir = "/Volumes/GoogleDrive/My Drive")
 #For PCs
 #knitr::opts_knit$set(root.dir = "G:/My Drive/")
 #for NAH ubuntu
-knitr::opts_knit$set(root.dir = "/home/nicholas/QSGP/")
+#knitr::opts_knit$set(root.dir = "/home/nicholas/QSGP/")
 
 #load required packages
 library(tidyverse)
