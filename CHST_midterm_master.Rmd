@@ -603,12 +603,12 @@ DR_invasives <- ggplot(data = Rep_aqua_invasives)+
   geom_polygon(aes(x=long, y=lat, group=group, fill=sr))+ 
   coord_fixed(1.3) +
   geom_polygon(data = Dem_aqua_invasives, aes(x=long, y=lat, group=group, fill=sr))+
-  scale_fill_gradient2(name = "", low = "#000066", mid = "#FFFFFF", high = "#FF0000", midpoint = 0, labels = c("High SR Republican", "High SR Democrat"), breaks = c(32, -8))+
+  scale_fill_gradient2(name = "", low = "#000066", mid = "#99CCFF", high = "#FF0000", midpoint = 0, labels = c("High SR Republican", "High SR Democrat"), breaks = c(32, -8))+
   labs(y = "Latitude of PA in Degrees", x = "Longitude of PA in Degrees", title = "Invasive Species Richness\nBy Federal Congressional District And Political Party")
 
 DR_invasives
 
-#Since the species richness in democratic areas is significantly lower than republican areas the color gradient shades in with red rather then blue and therefore gives us a purple color for the democratic areas. So to reiterate, Republican areas are represented in shades of red and the Democratic areas are represented in light purple/white.
+#Republican areas are labeled in shades of red. Democratic areas are labeled in shades of blue.
 ```
 
 Based on our findings of the species richness of our political parties map, we can deduct that **Republican** areas tend to have a higher species richness of invasive species than Democratic ones. There are many factors that could contribute to this relationship. For example, the fact that as of the most recent presidential election, Pennsylvania is slightly more red than blue based on the election results. Thus, there are inherently more Republican areas. Additionally, Republican areas are mostly rural, which may be an ideal environment for invasive species to spread. 
