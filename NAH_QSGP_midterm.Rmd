@@ -16,11 +16,11 @@ rm(list=ls())
 
 knitr::opts_chunk$set(echo = TRUE)
 #set the directory
-#knitr::opts_knit$set(root.dir = "/Volumes/GoogleDrive/My Drive")
+knitr::opts_knit$set(root.dir = "/Volumes/GoogleDrive/My Drive")
 #For PCs
 #knitr::opts_knit$set(root.dir = "G:/My Drive/")
 #for NAH ubuntu
-knitr::opts_knit$set(root.dir = "/home/nicholas/QSGP/")
+#knitr::opts_knit$set(root.dir = "/home/nicholas/QSGP/")
 
 #load required packages
 library(tidyverse)
@@ -277,7 +277,7 @@ srPerCongressional <- group_by(srPerCongressional, LEG_DISTRI)
 srPerCongressional <- dplyr::summarise(srPerCongressional, sr=length(unique(species)))
 ```
 
-```{r plot the results, message = FALSE} 
+```{r plot the results, message = FALSE, warning = FALSE} 
 #Authors: NGS
 invasivesCongressional <- congress
 invasivesCongressional@data <- left_join(invasivesCongressional@data, srPerCongressional, by='LEG_DISTRI') 
@@ -316,7 +316,7 @@ names(byspeciestype) <- c("turtles", "plants", "arthropods", "mollusc", "fish")
 
 Now that we have filtered versions of `aqua_invasives` for each `speciestype`, so we need to turn them into **SpatialPolygonsDataFrames** and calculate **Species Richness (SR)**. In summarizing the **SR** for each `speciestype`, we need to populate counties that are missing in the output with **SR** set to zero. This is done mid-loop, check the code comments for further details.
 
-```{r loop get SR by LEG_DISTRI, message = FALSE}
+```{r loop get SR by LEG_DISTRI, message = FALSE, warning = FALSE}
 #Authors: NGS, NAH
 #create new version of list that contains each species type
 spatial_byspeciestype <- byspeciestype
@@ -381,7 +381,7 @@ for(c in seq_along(invasive_congressional_gg_byspeciestype)){
 
 ###Univariate Distributions of richness for each grain and group
 
-To compare species richness between grains, we need to develop a version of the code for `congress` and `aqua_invasives` for all other grain types. Before we do that, let's show we can plot the univariate curve of SR for congress
+To compare species richness between grains, we need to develop a version of the code for `congress` and `aqua_invasives` for all other grain types. Before we do that, let's show we can plot the univariate curve of SR for congressional districts:
 
 ```{r plot sr curve congress}
 #Authors: NAH
@@ -539,24 +539,19 @@ Upon reviewing the previous figures, it is evident that there a number of outlie
 ##III. EDA - Multivariate Covariation
 ###Does the rate of human population growth correlate to the rate of species invasions? Does your answer depend on how you calculated rates? Does population size or present demographics better explain invasive species richness than rates?
 
-```{r read in census data}
+```{r read in census data, results = 'hide', message = FALSE}
 #Authors: NAH
 census <- read_csv("./QSGP_CHST/pa_census.csv", skip = 6) 
 census <- census %>%
-  dplyr::select(`2010 State, County & Munic. FIPS Code`:`Change_2000_2010`) %>%
-  dplyr::select(`2010 State, County & Munic. FIPS Code`, `Geographic Area`, Number_2000, Number_2010, Change_2000_2010)
+  dplyr::select(`2010 State, County & Munic. FIPS Code`:`Change_2000_2010`) #%>%
+  #dplyr::select(`2010 State, County & Munic. FIPS Code`, `Geographic Area`, Number_2000, Number_2010, Change_2000_2010)
 ```
 
 ```{r calculate pop growth rate}
 #Authors: NAH
-census <- census %>%
-  mutate(growth_rate = ((Number_2010 - Number_2000)/Number_2000))
+(census <- census %>%
+  mutate(growth_rate = ((Number_2010 - Number_2000)/Number_2000)))
 ```
-
-Look at Counties for comparing pop rate vs SR
-- calculate cum SR as of 2000
-- calculate cum SR as of 2010
-- make a table, calculate rate change
 
 ```{r cum SR by county 2000}
 #Authors: NAH
@@ -586,9 +581,73 @@ srPerCounty2010 <- cbind(srPerCounty2010, aqua_spatial_2010$state_scientific_nam
 colnames(srPerCounty2010)[colnames(srPerCounty2010) %in% 'aqua_spatial_2010$state_scientific_name'] <- 'species' 
 srPerCounty2010 <- group_by(srPerCounty2010, COUNTY_NAM) 
 srPerCounty2010 <- dplyr::summarise(srPerCounty2010, sr=length(unique(species)))
+```
 
+
+```{r join 2000_2010 and make rate col}
+#Authors: NAH
 #now join them by COUNTY_NAM
 srPerCounty2000_2010 <- inner_join(srPerCounty2000, srPerCounty2010, by = "COUNTY_NAM", suffix = c("_2000", "_2010"))
 
+#mutate a new rate column
+(srPerCounty2000_2010 <- srPerCounty2000_2010 %>%
+  mutate(sr_change_2000_2010 = (sr_2010 - sr_2000),
+         sr_rate = ((sr_2010 - sr_2000)/sr_2000)
+         )
+)
+
 ```
 
+```{r filter census to counties}
+#Authors: NAH
+
+census_county <- census %>%
+  filter(str_detect(string = `Geographic Area`, pattern = "(c|C)ounty")) %>%
+  mutate(`Geographic Area` = str_remove(string = `Geographic Area`, pattern = "\\s(c|C)ounty")) %>%
+  mutate(`Geographic Area` = toupper(`Geographic Area`))
+
+#now left join by the SR object for 2000_2010
+(sr_pop_2000_2010 <- left_join(srPerCounty2000_2010, census_county, by = c('COUNTY_NAM' = "Geographic Area")))
+```
+
+```{r plot pop vs sr}
+#Authors: NAH
+
+p_sr_pop <- ggplot(data = sr_pop_2000_2010) +
+  geom_point(mapping = aes(x = Change_2000_2010, y = sr_change_2000_2010)) +
+  labs(x = "Population Growth (Number Of New Individuals)", y = "Species Richness Growth (Number of New Species)")
+
+p_sr_pop_prop <- ggplot(data = sr_pop_2000_2010) +
+  geom_point(mapping = aes(x = growth_rate, y = sr_rate)) +
+  labs(x = "Proportional Population Growth Rate", y = "Proportional Species Richness Growth Rate")
+```
+
+```{r fit a model}
+#Authors: NAH
+
+#test correlation and make model for prop
+cor.test(x = sr_pop_2000_2010$growth_rate, y = sr_pop_2000_2010$sr_rate)
+lm_sr_pop_prop <- lm(formula = sr_rate~growth_rate, data = sr_pop_2000_2010)
+#add to plot
+p_sr_pop_prop + geom_abline(aes(intercept = lm_sr_pop_prop[[1]][1], slope = lm_sr_pop_prop[[1]][2]), color = "blue")
+
+#test correlation and make model for prop
+cor.test(x = sr_pop_2000_2010$Change_2000_2010, y = sr_pop_2000_2010$sr_change_2000_2010)
+lm_sr_pop <- lm(formula = sr_change_2000_2010~Change_2000_2010, data = sr_pop_2000_2010)
+#add to plot
+p_sr_pop + geom_abline(aes(intercept = lm_sr_pop[[1]][1], slope = lm_sr_pop[[1]][2]), color = "blue")
+
+```
+
+```{r look at correlation of present pop}
+#2010 populations and 2010 SR
+cor.test(x = sr_pop_2000_2010$Number_2010, y = sr_pop_2000_2010$sr_2010)
+
+#2010 relative percentage of state and 2010 SR
+#need to mutate Percent Share of State Total 2010 to proportion
+sr_pop_2000_2010 <- sr_pop_2000_2010 %>%
+  mutate(`Percent Share of State Total 2010` = (as.numeric(str_remove(`Percent Share of State Total 2010`, "%")))/100)
+#check correlation
+cor.test(x = sr_pop_2000_2010$`Percent Share of State Total 2010`, y = sr_pop_2000_2010$sr_2010)
+
+```
