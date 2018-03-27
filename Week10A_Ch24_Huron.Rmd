@@ -1,0 +1,65 @@
+---
+title: "Week10A_Ch24_Huron.Rmd"
+author: "Nicholas Huron"
+date: "3/22/2018"
+output: html_document
+---
+
+```{r setup, include=TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+#required packages
+library(modelr)
+library(tidyverse)
+library(nycflights13)
+library(lubridate)
+#set options
+options(na.action = na.warn)
+```
+
+##Chapter 24
+
+###Section 24.2.3
+  3. Extract the diamonds that have very high and very low residuals. Is there anything unusual about these diamonds? Are the particularly bad or good, or do you think these are pricing errors?
+ 
+```{r filter diamonds as per chapter and create model} 
+#initialize diamonds2
+(
+  diamonds2 <- diamonds %>% 
+  filter(carat <= 2.5) %>% 
+  mutate(lprice = log2(price), lcarat = log2(carat))
+  )
+
+#initialize model
+mod_diamond <- lm(lprice ~ lcarat, data = diamonds2)
+
+#add residuals
+(
+  diamonds2 <- diamonds2 %>% 
+  add_residuals(mod_diamond, "lresid")
+  )
+
+#get an idea of what the high and low resids are
+summary(diamonds2$lresid)
+
+#filter to residuals <= -1 and >= 1
+diamonds2_lohi <- diamonds2 %>%
+  filter(lresid <= -1 | lresid >= 1) %>%
+  arrange(lresid)
+
+#plot for EDA
+ggplot(data = diamonds2_lohi, mapping = aes(x = lcarat, y = lprice)) +
+  geom_point(mapping = aes(color = lresid)) +
+  geom_smooth(method = "lm", data = diamonds2, mapping = aes(x = lcarat, y = lprice))
+
+ggplot(data = diamonds2_lohi, mapping = aes(x = cut, y = lprice)) +
+  geom_point(mapping = aes(color = lresid)) +
+  facet_grid(~clarity)
+```
+
+Looking at the faceted figure, it seems questionable that some ideal cut and optimal clarity (IF) are priced lower than those with the worst cut and clarity (I1). Perhaps the differences/overlap in pricing between the far right grouping and the far left one suggests that there may be pricing errors? It is also clear that additional factors affect price.
+  
+###Section 24.3.5
+  4. 
+  
+  8. 
+
