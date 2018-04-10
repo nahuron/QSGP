@@ -19,7 +19,6 @@ options(na.action = na.warn)
 ##Chapter 24
 
 ###Section 24.2.3
-
   3. Extract the diamonds that have very high and very low residuals. Is there anything unusual about these diamonds? Are the particularly bad or good, or do you think these are pricing errors?
  
 ```{r filter diamonds as per chapter and create model} 
@@ -60,84 +59,7 @@ ggplot(data = diamonds2_lohi, mapping = aes(x = cut, y = lprice)) +
 Looking at the faceted figure, it seems questionable that some ideal cut and optimal clarity (IF) are priced lower than those with the worst cut and clarity (I1). Perhaps the differences/overlap in pricing between the far right grouping and the far left one suggests that there may be pricing errors? It is also clear that additional factors affect price.
   
 ###Section 24.3.5
+  4. 
   
-  4. Create a new wday variable that combines the day of week, term (for Saturdays), and public holidays. What do the residuals of that model look like?
+  8. 
 
-First, we create the object `daily` that we need for this analysis.
-```{r create daily and get it set up}
-daily <- flights %>% 
-mutate(date = make_date(year, month, day)) %>% 
-group_by(date) %>% 
-summarise(n = n())
-
-daily <- daily %>% 
-  mutate(wday = wday(date, label = TRUE))
-
-term <- function(date) {
-  cut(date, 
-    breaks = ymd(20130101, 20130605, 20130825, 20140101),
-    labels = c("spring", "summer", "fall") 
-  )
-}
-
-daily <- daily %>% 
-  mutate(term = term(date)) 
-
-
-daily
-```
-
-Then we can aggregate dates with the package `splusTimeDate`, because, well, we are really lazy with adding in dates manually.
-```{r read in holidays}
-#read package with holidays
-library(splusTimeDate)
-
-#obtain vector of dates for 2013 US holidays
-holiday <- holiday.USFederal(2013)
-holiday <- mdy(x = holiday)
-holiday <- make_date(month = holiday$month, day = holiday$day, year = holiday$year)
-
-```
-
-
-Now, we add in the new col, `wday2`, which contains the week day, the term (if it is a saturday), and that the day is a US Federal holiday (if that applies, regardless of whether it is a Saturday or other day).
-```{r now add wday2}
-#haven't figured out if lone conditionals (if()'s) can be used or if only ifelse() works with mutates...
-daily <- daily %>%
-  mutate(wday2 = ifelse(wday == "Sat", paste0(as.character(wday), "-", as.character(term)), as.character(wday))) %>%
-  mutate(wday2 = ifelse(date %in% holiday, paste0(as.character(wday2), "-Holiday"), as.character(wday2)))
-```
-
-Now, we look at the residuals with the new model and the latest model produced in the chapter.
-```{r add residuals and compare to mod2}
-#set mod2
-mod2 <- lm(n ~ wday * term, data = daily)
-#set mod3 (new wday2)
-mod3 <- lm(n ~ wday * wday2, data = daily)
-
-daily %>%
-  gather_residuals(day_plus_term_plus_holiday = mod3, day_term = mod2) %>%
-  ggplot(aes(date, resid, colour = model)) +
-    geom_line(alpha = 0.75)
-
-```
-
-The residuals are similar, with the notable difference of better residuals in part of the spring and worse residuals in part of the summer.
-
-  8. It’s a little frustrating that Sunday and Saturday are on separate ends of the plot. Write a small function to set the levels of the factor so that the week starts on Monday.
-
-```{r set the factor order function}
-levels(daily$wday)
-
-changewdayorder <- function(df.factor){
-  df.factor <- forcats::fct_relevel(df.factor, "Mon")
-  return(df.factor)
-}
-
-daily$wday <- changewdayorder(daily$wday)
-
-levels(daily$wday)
-
-```
-
-This little function uses the `forcats` package to move `"Mon"` to the front of the factor levels setting. If one wants to re-order the tibble by the days of the week after this, we can always use `group_by` before plotting or viewing the data.
