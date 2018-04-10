@@ -1,10 +1,8 @@
 ---
 title: "Week5A_map1_Huron"
 author: "Nicholas A. Huron"
-date: '2018-02-13'
-output:
-  pdf_document: default
-  html_document: default
+date: 2018-02-13
+output: html_document
 ---
 
 ##Set Up Code with Chunks from Tutorial
@@ -17,19 +15,23 @@ rm(list=ls()) #start with a clean slate!
 require(ggmap); require(sp); require(rgdal); require(raster); require(tidyverse); require(RColorBrewer)
 #add viridis package
 require(viridis)
+library(knitr)
 knitr::opts_chunk$set(echo = TRUE)
 #set the figure dims universally
 knitr::opts_chunk$set(fig.width=6, fig.height=10) 
 #set the dir
-knitr::opts_knit$set(root.dir="/Volumes/GoogleDrive/My Drive/QuantSci_GP/")
-#for NAH ubuntu
-knitr::opts_knit$set(root.dir = "/home/nicholas/QSGP/QuantSci_GP/")
+knitr::opts_knit$set(root.dir="D:/Users/tuf86195_2/Teaching/QSGP/QuantSci_GP/")
+#setwd("D:/Users/tuf86195_2/Teaching/QSGP/QuantSci_GP/")
+
+
 ```
 
 ###Load Provided Data
 
 1. Load invasive data:
 ```{r load invasives}
+
+
 invasives <- read_csv("./data/PA_Invasive_Species/all_obs_imap_18Dec17_v2_0.csv")
 ```
 2. Load raster data
