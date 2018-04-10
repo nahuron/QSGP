@@ -1,0 +1,115 @@
+---
+title: "Week11A_Ch26-28_Huron"
+author: "Nicholas Huron"
+date: "4/3/2018"
+output: html_document
+---
+
+```{r setup, include=TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+#clear the enviroment
+rm(list=ls())
+#required packages
+library(tidyverse)
+```
+
+##Chapter 28
+
+###Section 28.2.1
+
+  3. Take an exploratory graphic that you’ve created in the last month, and add informative titles to make it easier for others to understand.
+  
+For the midterm, we tried to add titles already, but let's try to clean up the code and trick it out!
+
+```{r original plot and reading of rda file}
+#read rda file
+load(file = "/Volumes/GoogleDrive/My Drive/G_Huron_Nicholas_A_UPLOAD/CHST_midterm_master.RData")
+
+ggplot() +
+  geom_density(data = sr_per_congressional_byspeciestype[[1]], aes(log(sr+1), fill = names(sr_per_congressional_byspeciestype)[1]), alpha = 0.5) +
+  geom_density(data = sr_per_congressional_byspeciestype[[2]], aes(log(sr+1), fill = names(sr_per_congressional_byspeciestype)[2]), alpha = 0.5) +
+  geom_density(data = sr_per_congressional_byspeciestype[[3]], aes(log(sr+1), fill = names(sr_per_congressional_byspeciestype)[3]), alpha = 0.5) +
+  geom_density(data = sr_per_congressional_byspeciestype[[4]], aes(log(sr+1), fill = names(sr_per_congressional_byspeciestype)[4]), alpha = 0.5) +
+  geom_density(data = sr_per_congressional_byspeciestype[[5]], aes(log(sr+1), fill = names(sr_per_congressional_byspeciestype)[5]), alpha = 0.5) +
+  ggtitle(str_to_title(paste0("Transformed Species Richness Of Invasive Aquatic Species By Species Type"))) +
+  labs(y = "Density", x = "ln(Species Richness + 1)") +
+  scale_fill_manual(name = "Species Type", values = c("red", "blue", "green", "orange", "black"), labels = c("arthropods", "fish", "mollusc", "plants", "turtles"), guide = 'legend')
+```
+
+Now let's tune that up a bit.
+```{r improve}
+ggplot() +
+  geom_density(data = sr_per_congressional_byspeciestype[[1]], aes(log(sr+1), fill = names(sr_per_congressional_byspeciestype)[1]), alpha = 0.5) +
+  geom_density(data = sr_per_congressional_byspeciestype[[2]], aes(log(sr+1), fill = names(sr_per_congressional_byspeciestype)[2]), alpha = 0.5) +
+  geom_density(data = sr_per_congressional_byspeciestype[[3]], aes(log(sr+1), fill = names(sr_per_congressional_byspeciestype)[3]), alpha = 0.5) +
+  geom_density(data = sr_per_congressional_byspeciestype[[4]], aes(log(sr+1), fill = names(sr_per_congressional_byspeciestype)[4]), alpha = 0.5) +
+  geom_density(data = sr_per_congressional_byspeciestype[[5]], aes(log(sr+1), fill = names(sr_per_congressional_byspeciestype)[5]), alpha = 0.5) +
+  labs(y = "Density", x = "ln(Species Richness + 1)", fill = "Species Type", title = "Species Richness Of Invasive Aquatic Species in Pennsylvania") +
+  scale_fill_manual(name = "Species Type", values = c("red", "blue", "green", "orange", "black"), labels = c("Arthropods", "Fish", "Mollusc", "Plants", "Turtles"), guide = 'legend') +
+  theme(axis.text.x=element_blank(),
+      axis.ticks.x=element_blank(),
+      axis.text.y=element_blank(),
+      axis.ticks.y=element_blank())
+ggsave(filename = "Week11A_Ch26-28_Huron.pdf", path = "/Volumes/GoogleDrive/My Drive/G_Huron_Nicholas_A_UPLOAD")
+```
+  
+###Section 28.3.1
+
+  3. How do labels with geom_text() interact with faceting? How can you add a label to a single facet? How can you put a different label in each facet? (Hint: think about the underlying data.)
+  
+```{r see about faceting with geom_text}
+#create text label for geom_text
+label <- tibble(
+  cty = Inf,
+  hwy = Inf,
+  label = "City and highway fuel economy\n are not identical."
+)
+
+#build the base plot
+p <- mpg %>%
+  ggplot(mapping = aes(x = cty, y = hwy)) +
+  geom_point(mapping = aes(color = drv)) +
+  facet_wrap(~class, strip.position = "bottom")
+
+#now play with the label
+p + geom_text(data = label, mapping = aes(label = label), vjust = "top", hjust = "right")
+```
+
+So it is clear that each facet gets the label by default! If we want to add a label to just one plot, we can try adding an identifier col to `label` to let the `geom_text()` command know what we are targeting.
+
+```{r revamp to include a single label}
+(
+label <- label %>%
+  mutate(class = "minivan")
+)
+
+#try the plot again (this will not work unless we re-wrap the facet after the geom_text)
+p + geom_text(data = label, mapping = aes(label = label), vjust = "top", hjust = "right") +
+  facet_wrap(~class, strip.position = "bottom")
+```
+
+Now we have a single label, though it is important to facet again after calling `geom_text`! I bet that if we create a new label object for each source of data in the facet.
+```{r unique labels}
+#new label
+label <- tibble(
+  cty = rep(as.numeric(-Inf), times = length(unique(mpg$class))),
+  hwy = rep(Inf, times = length(unique(mpg$class))),
+  label = unique(mpg$class),
+  class = unique(mpg$class)
+)
+
+#plot it again! we also strip the facet labels, since we are adding the same info (thanks stackoverflow)
+p + geom_text(data = label, mapping = aes(label = label), vjust = "top", hjust = "left") +
+  facet_wrap(~class) + 
+theme(
+  strip.background = element_blank(),
+  strip.text.x = element_blank()
+)
+```
+
+
+###Section 28.4.4
+
+  2. What is the first argument to every scale? How does it compare to labs()?
+
+The first argument to each `scale_` function is `...`, which is stated to be all arguments passed to control the name, limits, breaks, labels, and such to the aesthetic that is being altered. While the default annotation is the same for `labs`, the expected input for arguments is a list of name-value pairs for aesthetics or the titles of a plot (e.g., `color = "Cylinders"` in the documentation example code that changes the legend label from `cyl`). It seems that the former is a bit a more flexible but is quite similar in expected input arguments to the latter.
