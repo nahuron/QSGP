@@ -1,0 +1,67 @@
+---
+title: "final_project"
+author: "Nicholas Huron"
+date: "4/11/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+#clear workspace first
+rm(list=ls())
+
+knitr::opts_chunk$set(echo = TRUE)
+#set the directory
+knitr::opts_knit$set(root.dir = "/Volumes/GoogleDrive/My Drive/Global_Trait/Leiocephalus_Project/")
+#For PCs
+#knitr::opts_knit$set(root.dir = "G:/My Drive/")
+
+#load required packages
+library(tidyverse)
+
+
+```
+
+#outline
+
+##Pull and Clean Data
+
+###Morphological Data
+
+```{r pull in morpho dat}
+#read in mean morph dataset
+dat.morph <- read_csv("./data/trait/Leiocephalus_sppmean_v4_4.csv", col_names = T)
+
+##does remove scutellation counts
+rm.morph <- c("16.1", "22.1", "30", "31", "32", "35", "36", "37", "15.2", "8", "10", "19.2", "19.3", "19.4", "25.2", "25.3", "25.4", "16.1", "19", "22.1", "25", "28", "29", "33", "34")
+#rm the new measurements for now
+rm.morph <- c(rm.morph, "14.1", "15.1")
+
+#now make the cuts
+
+#mean morph dataset
+dat.morph <- dat.morph %>%
+  dplyr::select(colnames(dat.morph)[!colnames(dat.morph) %in% rm.morph]) %>%
+  as_tibble(.)
+
+```
+
+###IUCN Data
+```{r pull in iucn dat}
+#read in iucn shorthand (will need to filter later or join appropriately)
+leioiucn <- read_csv(file = "./data/iucn tabular/leiocephalus_IUCN.csv", col_names = T)
+#coerce cols to be factors except species
+leioiucn <- leioiucn %>%
+  mutate(island_bank = factor(island_bank),
+         redlist = factor(redlist),
+         notes = factor(notes)
+         )
+
+```
+
+###Environmental/Spatial Data
+
+##Turn Morpho Data into PCA
+
+
+
+##Plot Datasets
