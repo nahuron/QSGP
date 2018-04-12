@@ -17,6 +17,7 @@ knitr::opts_knit$set(root.dir = "/Volumes/GoogleDrive/My Drive/Global_Trait/Leio
 
 #load required packages
 library(tidyverse)
+library(ieco)
 
 
 ```
@@ -27,7 +28,7 @@ library(tidyverse)
 
 ###Morphological Data
 
-```{r pull in morpho dat}
+```{r pull in morpho dat, message = FALSE}
 #read in mean morph dataset
 dat.morph <- read_csv("./data/trait/Leiocephalus_sppmean_v4_4.csv", col_names = T)
 
@@ -39,29 +40,45 @@ rm.morph <- c(rm.morph, "14.1", "15.1")
 #now make the cuts
 
 #mean morph dataset
+knitr::kable(
 dat.morph <- dat.morph %>%
   dplyr::select(colnames(dat.morph)[!colnames(dat.morph) %in% rm.morph]) %>%
   as_tibble(.)
-
+)
 ```
 
 ###IUCN Data
-```{r pull in iucn dat}
+```{r pull in iucn dat, message = FALSE}
 #read in iucn shorthand (will need to filter later or join appropriately)
 leioiucn <- read_csv(file = "./data/iucn tabular/leiocephalus_IUCN.csv", col_names = T)
 #coerce cols to be factors except species
-leioiucn <- leioiucn %>%
+knitr::kable(
+  leioiucn <- leioiucn %>%
   mutate(island_bank = factor(island_bank),
          redlist = factor(redlist),
          notes = factor(notes)
          )
-
+)
 ```
 
 ###Environmental/Spatial Data
 
 ##Turn Morpho Data into PCA
+```{r pca}
+#log transform data and standardize by SVL
+ln.dat.morph <- as.data.frame(log(dat.morph[,-1]))
+ln.dat.morph <- cbind(ln.dat.morph[,1], (ln.dat.morph[,-1] / ln.dat.morph[,1]))
+colnames(ln.dat.morph)[1] <- "1"
 
 
+#re-attach the species names
+#ln.dat.morph <- as_tibble(cbind(dat.morph[,1], ln.dat.morph))
+#row names do not behave with tibbles
+#ln.dat.morph <- as_tibble(ln.dat.morph)
+rownames(ln.dat.morph) <- as.character(dat.morph$species)
+
+
+
+```
 
 ##Plot Datasets
