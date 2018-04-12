@@ -38,12 +38,15 @@ rm.morph <- c("16.1", "22.1", "30", "31", "32", "35", "36", "37", "15.2", "8", "
 rm.morph <- c(rm.morph, "14.1", "15.1")
 
 #now make the cuts
-
-#mean morph dataset
-knitr::kable(
 dat.morph <- dat.morph %>%
   dplyr::select(colnames(dat.morph)[!colnames(dat.morph) %in% rm.morph]) %>%
   as_tibble(.)
+
+#rename the species to drop the genus
+#from dat.morph
+knitr::kable(
+dat.morph <- dat.morph %>%
+  mutate(species = str_remove(species, pattern = "Leiocephalus "))
 )
 ```
 
@@ -52,12 +55,19 @@ dat.morph <- dat.morph %>%
 #read in iucn shorthand (will need to filter later or join appropriately)
 leioiucn <- read_csv(file = "./data/iucn tabular/leiocephalus_IUCN.csv", col_names = T)
 #coerce cols to be factors except species
-knitr::kable(
+
   leioiucn <- leioiucn %>%
   mutate(island_bank = factor(island_bank),
          redlist = factor(redlist),
          notes = factor(notes)
          )
+
+#rename the species to drop the genus
+#from leioiucn (also change sci_name variable to species)
+knitr::kable(
+leioiucn <- leioiucn %>%
+  rename(species = sci_name) %>%
+  mutate(species = str_remove(species, pattern = "Leiocephalus "))
 )
 ```
 
@@ -72,13 +82,33 @@ colnames(ln.dat.morph)[1] <- "1"
 
 
 #re-attach the species names
-#ln.dat.morph <- as_tibble(cbind(dat.morph[,1], ln.dat.morph))
-#row names do not behave with tibbles
-#ln.dat.morph <- as_tibble(ln.dat.morph)
-rownames(ln.dat.morph) <- as.character(dat.morph$species)
-
-
+#re-attach the species names
+ln.dat.morph <- dat.morph %>%
+  select(species) %>%
+  bind_cols(., ln.dat.morph)
 
 ```
+
+
+#re-add in IUCN data
+dat.morph.ind2 <- right_join(leioiucn, dat.morph.ind2, by = c("species" = "species"))
+colnames(dat.morph.ind2)[1] <- "species"
+
+
+#transform measurements and standardize by SVL
+ln.ind.morph <- as.data.frame(log(dat.morph.ind2[,-1:-5]))
+ln.ind.morph <- cbind(ln.ind.morph[,1], (ln.ind.morph[,-1] / ln.ind.morph[,1]))
+colnames(ln.ind.morph)[1] <- "1"
+
+
+#re-attach the species names
+ln.ind.morph <- dat.morph.ind2 %>%
+  select(species:specimen.id.number) %>%
+  bind_cols(., ln.ind.morph)
+
+
+
+
+
 
 ##Plot Datasets
