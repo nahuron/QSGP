@@ -18,7 +18,9 @@ knitr::opts_knit$set(root.dir = "/Volumes/GoogleDrive/My Drive/Global_Trait/Leio
 #load required packages
 library(tidyverse)
 library(ieco)
-
+library(raster)
+library(rgeos)
+library(rgdal)
 
 ```
 
@@ -73,42 +75,90 @@ leioiucn <- leioiucn %>%
 
 ###Environmental/Spatial Data
 
-##Turn Morpho Data into PCA
+```{r get shapefiles for species, cache=TRUE}
+#list of shape files for each species to cut enviro data to
+leiodist <- list.files(path = "/Volumes/GoogleDrive/My Drive/Global_Trait/Leiocephalus_Project/data/distribution/Caribbean_Herp_Data/polygons/Reptiles/", pattern = "^Leiocephalus.*\\.shp$", full.names = TRUE)
+
+#test loading in the enviro data missing: TCA?
+countries <- c('DOM', 'HTI', 'CUB', 'PRI', 'JAM', 'BHS', 'GLP', 'ATG', 'MTQ', 'CYM', 'TCA')
+
+all_countries <- list()
+
+for(a in seq_along(countries)){
+  all_countries[[a]] <- getData('GADM', country = countries[a], level = 0)
+}
+
+comb_countries <- do.call("merge", all_countries)
+
+comb_countries <- rbind(all_countries[[1]],
+                        all_countries[[2]])
+
+for(b in 3:length(all_countries)){
+  comb_countries <- rbind(comb_countries, all_countries[[b]])
+}
+
+#writeOGR(obj = comb_countries, layer = "comb_countries", driver="ESRI Shapefile", dsn = "/Users/nicholashuron/Desktop/SRTM/")
+
+comb_carib <- raster("/Users/nicholashuron/Desktop/SRTM/carib_v2.tif")
+plot(comb_carib, col = viridis::viridis(100, direction = -1))
+
+#some longer recoding of non-focal elevation
+#comb_carib[comb_carib>=-32768 & comb_carib<=-100] <- NA
+#writeRaster(comb_carib, filename="/Users/nicholashuron/Desktop/SRTM/carib_v2.1.tif", format="GTiff", overwrite=T)
+
+comb_carib <- raster("/Users/nicholashuron/Desktop/SRTM/carib_v2.1.tif")
+plot(comb_carib, col = viridis::viridis(100, direction = -1, end = 0.9, begin = 0.1))
+
+#another way to plot
+rasterVis::gplot(comb_carib, maxpixels = 5e5) + geom_tile(aes(fill = value)) + coord_equal() + viridis::scale_fill_viridis(direction = -1, end = 0.9, begin = 0.1)
+
+#now create clippings of the raster layer for each species' shape file and extract the elevation values
+#test version
+plot(readOGR(leiodist[1]))
+plot(crop(comb_carib,readOGR(leiodist[1])))
+
+na.exclude(getValues(crop(comb_carib,readOGR(leiodist[1])))) %>%
+  as_tibble(.) %>%
+  ggplot(.) +
+  geom_histogram(aes(x = value))
+
+#now do it in a loop, storing results in a list?
+
+
+```
+
+##Combine Datasets and Turn Morpho Data into PCA
 ```{r pca}
+
+#re-add in IUCN data
+dat.morph <- right_join(leioiucn, dat.morph, by = c("species" = "species"))
+colnames(dat.morph)[1] <- "species"
+
 #log transform data and standardize by SVL
-ln.dat.morph <- as.data.frame(log(dat.morph[,-1]))
+ln.dat.morph <- as.data.frame(log(dat.morph[,-1:-4]))
 ln.dat.morph <- cbind(ln.dat.morph[,1], (ln.dat.morph[,-1] / ln.dat.morph[,1]))
 colnames(ln.dat.morph)[1] <- "1"
 
 
 #re-attach the species names
-#re-attach the species names
 ln.dat.morph <- dat.morph %>%
-  select(species) %>%
+  select(species:redlist) %>%
   bind_cols(., ln.dat.morph)
 
+ln.dat.morph
+
+#actualy PCA function
+mPCA <- ln.dat.morph %>%
+  select(-species:-redlist) %>%
+  prcomp(center = TRUE, scale. = TRUE)
+
+mPCA_tidy <- bind_cols(select(ln.dat.morph, species:redlist), as.data.frame(mPCA$x))
 ```
 
-
-#re-add in IUCN data
-dat.morph.ind2 <- right_join(leioiucn, dat.morph.ind2, by = c("species" = "species"))
-colnames(dat.morph.ind2)[1] <- "species"
-
-
-#transform measurements and standardize by SVL
-ln.ind.morph <- as.data.frame(log(dat.morph.ind2[,-1:-5]))
-ln.ind.morph <- cbind(ln.ind.morph[,1], (ln.ind.morph[,-1] / ln.ind.morph[,1]))
-colnames(ln.ind.morph)[1] <- "1"
-
-
-#re-attach the species names
-ln.ind.morph <- dat.morph.ind2 %>%
-  select(species:specimen.id.number) %>%
-  bind_cols(., ln.ind.morph)
-
-
-
-
-
-
 ##Plot Datasets
+
+###Plot PCA Data
+```{r plot pca}
+ggplot(data = mPCA_tidy, mapping = aes(x = PC1, y = PC2)) +
+  geom_point(aes(color = species), show.legend = T)
+```
