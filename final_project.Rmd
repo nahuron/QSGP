@@ -75,9 +75,9 @@ leioiucn <- leioiucn %>%
 
 ###Environmental/Spatial Data
 
-```{r get shapefiles for species, cache=TRUE}
+```{r get shapefiles for species, cache=TRUE, message=FALSE}
 #list of shape files for each species to cut enviro data to
-leiodist <- list.files(path = "/Volumes/GoogleDrive/My Drive/Global_Trait/Leiocephalus_Project/data/distribution/Caribbean_Herp_Data/polygons/Reptiles/", pattern = "^Leiocephalus.*\\.shp$", full.names = TRUE)
+leiodist <- list.files(path = "./data/distribution/Caribbean_Herp_Data/polygons/Reptiles", pattern = "^Leiocephalus.*\\.shp$", full.names = TRUE)
 
 #test loading in the enviro data missing: TCA?
 countries <- c('DOM', 'HTI', 'CUB', 'PRI', 'JAM', 'BHS', 'GLP', 'ATG', 'MTQ', 'CYM', 'TCA')
@@ -85,7 +85,7 @@ countries <- c('DOM', 'HTI', 'CUB', 'PRI', 'JAM', 'BHS', 'GLP', 'ATG', 'MTQ', 'C
 all_countries <- list()
 
 for(a in seq_along(countries)){
-  all_countries[[a]] <- getData('GADM', country = countries[a], level = 0)
+  all_countries[[a]] <- getData('GADM', country = countries[a], level = 0, path = "./data/environment/")
 }
 
 comb_countries <- do.call("merge", all_countries)
@@ -115,7 +115,7 @@ rasterVis::gplot(comb_carib, maxpixels = 5e5) + geom_tile(aes(fill = value)) + c
 #now create clippings of the raster layer for each species' shape file and extract the elevation values
 #test version
 plot(readOGR(leiodist[1]))
-plot(crop(comb_carib,readOGR(leiodist[1])))
+plot(crop(comb_carib,readOGR(leiodist[1])), add = T)
 
 na.exclude(getValues(crop(comb_carib,readOGR(leiodist[1])))) %>%
   as_tibble(.) %>%
@@ -123,7 +123,33 @@ na.exclude(getValues(crop(comb_carib,readOGR(leiodist[1])))) %>%
   geom_histogram(aes(x = value))
 
 #now do it in a loop, storing results in a list?
+leio_elev <- list()
 
+for(b in seq_along(leiodist)){
+  #populate with all values of elevation per species
+  leio_elev[[b]] <- na.exclude(getValues(crop(comb_carib, readOGR(leiodist[b]))))
+  
+  #add in the names
+  names(leio_elev)[b] <- list.files(path = "./data/distribution/Caribbean_Herp_Data/polygons/Reptiles", pattern = "^Leiocephalus.*\\.shp$", full.names = FALSE)[b]
+  names(leio_elev)[b] <- gsub(pattern = ".shp", "", names(leio_elev)[b])
+  
+}
+
+```
+
+###Write a function to turn the list into a tibble where sublist names are a categorical var for each observation
+```{r list to tibble function}
+
+#list2tibble <- function(...)
+
+#initialize output tibble
+dat.tibble <- tibble(value = NA, category = NA)
+
+for(c in seq_along(leio_elev)){
+  print(c)
+  unlist(leio_elev[[c]]) %>%
+    bind_cols(value = ., category = names(leio_elev)[c])
+}
 
 ```
 
