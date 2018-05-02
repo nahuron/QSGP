@@ -1,19 +1,39 @@
 ---
-title: "final_project"
+title: "Climbing The Mountain: Is Elevation Range A Predictor Of Morphological Uniqueness For Island Lizards?"
 author: "Nicholas Huron"
-date: "4/11/2018"
+date: "05/03/2018"
 output: html_document
+fig.height: 8
+fig.width: 8
 ---
 
-```{r setup, include=FALSE}
+```{r set-options, echo = F, cache=F}
+options(width = 500)
+```
+
+##Aim
+The earth is experiencing an ongoing mass extinction event, in which anthropogenic activities have been implicated as a causative factor (Barnosky et al. 2011; Dirzo et al. 2014; Bochaton et al. 2017). In the current mass extinction, loss of functional diversity (FD), or the variety of unique ecosystem roles held by species, is of primary concern (Petchey & Gaston 2006). Because traits mediate ecological interactions (and thus ecological roles), if organisms with uncommon traits go extinct, loss of unique interactions could follow (Loreau 2000; Dirzo et al. 2014). For example, large-bodied species are extinction-prone (especially reptiles, Kemp & Hadly 2015), and their loss catalyzes cascading effects on ecosystems (Dirzo et al. 2014). Morphological traits and FD also indicate environmental limitations for species, which may become exacerbated under climate change. Here, we investigate the relationship between morphological uniqueness and environmental variability of lizards in the genus *Leiocephalus* to better understand how present and future FD of this genus may be shaped by it, thereby informing conservation.
+
+##Question and Problem (need to edit)
+ We ask if environmental variability is strongly correlated with morphological uniqueness for *Leiocephalus*. Additionally, we ask if the strength of this relationship differs for least concern and all threatened species based on International Union for Conservation of Nature (IUCN) categories.
+
+##Location and Grain
+The Caribbean islands. Spatial data consist of proposed species distribution polygons (no specific grain size but do not stretch more than a few islands) and the Shuttle Ray Topography Mission (SRTM) 3 arc-second elevation dataset (available at [http://srtm.csi.cgiar.org/](http://srtm.csi.cgiar.org/)). 
+
+
+
+![An individual of *Leiocephalus psammodromus* displays the tail-curling behavior that gives rise to the common name of this genus. This smaller-bodied species is especially threatened according to IUCN criteria.](/Volumes/GoogleDrive/My Drive/G_Huron_Nicholas_A_UPLOAD/psammodromus.jpeg){ width=50% }
+
+##Methods
+We collected measurements for 24 continuous phenotypic traits for extinct and extant lizards and extracted topographic data from SRTM dataset (Javis et al. 2008) for focal islands based on expert range polygons (Hedges, personal communication). Conservation status for present and future species richness was obtained from the IUCN Redlist online database (IUCN 2017). To reduce the high dimensionality of the morphological data, we conducted a principal components analysis. For evaluation of environmental and morphological covariance, we retained the most significant principal components and calculate the centroid of all species and calculated the distance between each species and the centroid. This distance from the centroid was used to measure morphological uniqueness and was regressed against species elevation ranges. This relationship was also evaluated for the least concern and threatened species subsets. 
+
+```{r setup, echo=F, message=F, warning=F}
 #clear workspace first
 rm(list=ls())
 
 knitr::opts_chunk$set(echo = TRUE)
 #set the directory
 knitr::opts_knit$set(root.dir = "/Volumes/GoogleDrive/My Drive/Global_Trait/Leiocephalus_Project/")
-#For PCs
-#knitr::opts_knit$set(root.dir = "G:/My Drive/")
 
 #load required packages
 library(tidyverse)
@@ -24,13 +44,35 @@ library(rgdal)
 
 ```
 
-#outline
+```{r pull in iucn dat, message = F, echo=F, warning=F}
+#read in iucn shorthand (will need to filter later or join appropriately)
+leioiucn <- read_csv(file = "./data/iucn tabular/leiocephalus_IUCN.csv", col_names = T)
+#coerce cols to be factors except species
 
-##Pull and Clean Data
+  leioiucn <- leioiucn %>%
+  mutate(island_bank = factor(island_bank),
+         redlist = factor(redlist),
+         notes = factor(notes)
+         )
 
-###Morphological Data
+#rename the species to drop the genus
+#from leioiucn (also change sci_name variable to species)
+#knitr::kable(leioiucn %>%
+#  rename(species = sci_name))
 
-```{r pull in morpho dat, message = FALSE}
+leioiucn <- leioiucn %>%
+  rename(species = sci_name) %>%
+  mutate(species = str_remove(species, pattern = "Leiocephalus "))
+
+#version with all threatened as the same
+leioiucn2 <- leioiucn
+    leioiucn2$redlist <- gsub(pattern = "^(?!LC$|EX$).*",replacement = "TH", leioiucn2$redlist, perl = T)
+    leioiucn2$redlist <- factor(leioiucn2$redlist, levels = c("EX", "TH", "LC"))
+
+
+```
+
+```{r pull in morpho dat, message = F, warning = F, echo=F}
 #read in mean morph dataset
 dat.morph <- read_csv("./data/trait/Leiocephalus_sppmean_v4_4.csv", col_names = T)
 
@@ -45,37 +87,64 @@ dat.morph <- dat.morph %>%
   as_tibble(.)
 
 #rename the species to drop the genus
-#from dat.morph
-knitr::kable(
 dat.morph <- dat.morph %>%
   mutate(species = str_remove(species, pattern = "Leiocephalus "))
-)
+
 ```
 
-###IUCN Data
-```{r pull in iucn dat, message = FALSE}
-#read in iucn shorthand (will need to filter later or join appropriately)
-leioiucn <- read_csv(file = "./data/iucn tabular/leiocephalus_IUCN.csv", col_names = T)
-#coerce cols to be factors except species
+```{r pca, echo=F}
 
-  leioiucn <- leioiucn %>%
-  mutate(island_bank = factor(island_bank),
-         redlist = factor(redlist),
-         notes = factor(notes)
-         )
+#re-add in IUCN data
+dat.morph <- right_join(leioiucn2, dat.morph, by = c("species" = "species"))
+colnames(dat.morph)[1] <- "species"
 
-#rename the species to drop the genus
-#from leioiucn (also change sci_name variable to species)
-knitr::kable(
-leioiucn <- leioiucn %>%
-  rename(species = sci_name) %>%
-  mutate(species = str_remove(species, pattern = "Leiocephalus "))
-)
+#log transform data and standardize by SVL
+ln.dat.morph <- as.data.frame(log(dat.morph[,-1:-4]))
+ln.dat.morph <- cbind(ln.dat.morph[,1], (ln.dat.morph[,-1] / ln.dat.morph[,1]))
+colnames(ln.dat.morph)[1] <- "1"
+
+
+#re-attach the species names
+ln.dat.morph <- dat.morph %>%
+  dplyr::select(species:redlist) %>%
+  bind_cols(., ln.dat.morph)
+
+#actualy PCA function
+mPCA <- ln.dat.morph %>%
+  dplyr::select(-species:-redlist) %>%
+  prcomp(center = TRUE, scale. = TRUE)
+
+mPCA_tidy <- bind_cols(dplyr::select(ln.dat.morph, species:redlist), as.data.frame(mPCA$x))
 ```
 
-###Environmental/Spatial Data
+```{r centroids, echo=F}
+#obtain PC1 vs PC2 centroid
+leio_centroid <- as_tibble(t(rsdepth::centroid(x = mPCA_tidy$PC1, y = mPCA_tidy$PC2)))
+colnames(leio_centroid) <- c("PC1", "PC2")
 
-```{r get shapefiles for species, cache=TRUE, message=FALSE}
+#write function to grab distance from centroid
+dcentroid <- function(centroid, data, species){
+  names(centroid) <- c("x","y")
+  names(data) <- c("x","y")
+  
+  output <- as_tibble(matrix(nrow = nrow(data), ncol = ncol(data)+2))
+  colnames(output) <- c("species","x", "y", "distance")
+  
+  output$x <- data$x
+  output$y <- data$y
+  output$species <- species
+  output$distance <- sqrt(((data$x - centroid$x)^2) + ((data$y - centroid$y)^2))
+  
+  return(output)
+}
+
+leio_dcent <- dcentroid(leio_centroid, mPCA_tidy[,5:6], mPCA_tidy$species)
+
+leio_dcent <- left_join(leio_dcent, leioiucn2, by = "species")
+
+```
+
+```{r get shapefiles for species, cache=TRUE, message=F, include=T, echo=F, warning=F}
 #list of shape files for each species to cut enviro data to
 leiodist <- list.files(path = "./data/distribution/Caribbean_Herp_Data/polygons/Reptiles", pattern = "^Leiocephalus.*\\.shp$", full.names = TRUE)
 
@@ -88,6 +157,84 @@ for(a in seq_along(countries)){
   all_countries[[a]] <- getData('GADM', country = countries[a], level = 0, path = "./data/environment/")
 }
 
+#need to use Leiocephalus eremitus.shp to add in Navassa Island to the all_countries object
+navassa <- readOGR(dsn = leiodist[9], verbose = F)
+data_navassa <- tibble(OBJECTID = 1,     
+                        ID_0 = NA,
+                        ISO = NA,
+                        NAME_ENGLISH = "Navassa",
+                        NAME_ISO = NA,
+                        NAME_FAO = NA,
+                        NAME_LOCAL = "Navassa",
+                        NAME_OBSOLETE = NA,
+                        NAME_VARIANTS = NA,
+                        NAME_NONLATIN = NA, 
+                        NAME_FRENCH = NA,   
+                        NAME_SPANISH = NA,  
+                        NAME_RUSSIAN = NA,  
+                        NAME_ARABIC = NA,   
+                        NAME_CHINESE = NA,  
+                        WASPARTOF = NA,    
+                        CONTAINS = NA,      
+                        SOVEREIGN = NA,    
+                        ISO2 = NA,          
+                        WWW = NA,           
+                        FIPS = "BQ",          
+                        ISON = NA,
+                        VALIDFR = NA,       
+                        VALIDTO = NA,       
+                        POP2000 = 0,       
+                        SQKM = 5.4,          
+                        POPSQKM = 0,
+                        UNREGION1 = "Caribbean",     
+                        UNREGION2 = "Americas",
+                        DEVELOPING = NA,    
+                        CIS = NA,           
+                        Transition = NA,    
+                        OECD = NA,          
+                        WBREGION = NA,
+                        WBINCOME = NA,
+                        WBDEBT = NA,       
+                        WBOTHER = NA,
+                        CEEAC = NA,
+                        CEMAC = NA,
+                        CEPLG = NA,         
+                        COMESA = NA,        
+                        EAC = NA,           
+                        ECOWAS = NA,        
+                        IGAD = NA,          
+                        IOC = NA,          
+                        MRU = NA,           
+                        SACU = NA,          
+                        UEMOA = NA,         
+                        UMA = NA,           
+                        PALOP = NA,         
+                        PARTA = NA,         
+                        CACM = NA,         
+                        EurAsEC = NA,      
+                        Agadir = NA,       
+                        SAARC = NA,         
+                        ASEAN = NA,         
+                        NAFTA = NA,         
+                        GCC = NA,           
+                        CSN = NA,           
+                        CARICOM = NA,       
+                        EU = NA,            
+                        CAN = NA,          
+                        ACP = NA,          
+                        Landlocked = NA,    
+                        AOSIS = NA,         
+                        SIDS = NA,          
+                        Islands = 1,       
+                        LDC = NA
+                       )
+navassa@data <- data_navassa
+#writeOGR(obj = navassa, layer = "navassa", driver = "ESRI Shapefile", dsn = "/Users/nicholashuron/Desktop/SRTM/", overwrite_layer = T)
+
+
+#navassa <- readOGR(dsn = "/Users/nicholashuron/Desktop/SRTM/navassa.shp", verbose = F)
+all_countries[[12]] <- navassa
+
 comb_countries <- do.call("merge", all_countries)
 
 comb_countries <- rbind(all_countries[[1]],
@@ -97,94 +244,201 @@ for(b in 3:length(all_countries)){
   comb_countries <- rbind(comb_countries, all_countries[[b]])
 }
 
-#writeOGR(obj = comb_countries, layer = "comb_countries", driver="ESRI Shapefile", dsn = "/Users/nicholashuron/Desktop/SRTM/")
+#writeOGR(obj = comb_countries, layer = "comb_countries_v2", driver="ESRI Shapefile", dsn = "/Users/nicholashuron/Desktop/SRTM/")
 
-comb_carib <- raster("/Users/nicholashuron/Desktop/SRTM/carib_v2.tif")
-plot(comb_carib, col = viridis::viridis(100, direction = -1))
+#how to get a new version of the varius shapefile
+#writeOGR(obj = getData('GADM', country = 'CYM', level = 0, path = "./data/environment/"), driver="ESRI Shapefile", dsn = "/Users/nicholashuron/Desktop/SRTM/", layer = "Leiocephalus varius")
+
+comb_carib <- raster("/Users/nicholashuron/Desktop/SRTM/carib_v2.2.tif")
+#plot(comb_carib, col = viridis::viridis(100, direction = -1), xlab = "Longitude", ylab = "Latitude", main = str_to_title("Spatial Distribution of Elevation in Meters \nThroughout the Known Range of Leiocephalus"))
 
 #some longer recoding of non-focal elevation
 #comb_carib[comb_carib>=-32768 & comb_carib<=-100] <- NA
-#writeRaster(comb_carib, filename="/Users/nicholashuron/Desktop/SRTM/carib_v2.1.tif", format="GTiff", overwrite=T)
+#writeRaster(comb_carib, filename="/Users/nicholashuron/Desktop/SRTM/carib_v2.3.tif", format="GTiff", overwrite=T)
 
-comb_carib <- raster("/Users/nicholashuron/Desktop/SRTM/carib_v2.1.tif")
-plot(comb_carib, col = viridis::viridis(100, direction = -1, end = 0.9, begin = 0.1))
+comb_carib <- raster("/Users/nicholashuron/Desktop/SRTM/carib_v2.3.tif")
+plot(comb_carib, col = viridis::viridis(100, direction = -1, end = 0.9, begin = 0.1), xlab = "Longitude (Degrees)", ylab = "Latitude (Degrees)", main = str_to_title("Corrected Spatial Distribution of Elevation in Meters \nThroughout the Known Range of Leiocephalus"))
 
 #another way to plot
-rasterVis::gplot(comb_carib, maxpixels = 5e5) + geom_tile(aes(fill = value)) + coord_equal() + viridis::scale_fill_viridis(direction = -1, end = 0.9, begin = 0.1)
+#rasterVis::gplot(comb_carib, maxpixels = 2e5) + geom_tile(aes(fill = value)) + coord_equal() + viridis::scale_fill_viridis(direction = -1, end = 0.9, begin = 0.1)
 
-#now create clippings of the raster layer for each species' shape file and extract the elevation values
-#test version
-plot(readOGR(leiodist[1]))
-plot(crop(comb_carib,readOGR(leiodist[1])), add = T)
+```
 
-na.exclude(getValues(crop(comb_carib,readOGR(leiodist[1])))) %>%
-  as_tibble(.) %>%
-  ggplot(.) +
-  geom_histogram(aes(x = value))
+To check the integrity of the SRTM data for the geographic extent for *Leiocephalus*, we plotted a map of the environmental data. This process prompted two corrections to the environmental data:
+ 
+  1. inclusion of two smaller islands on which two different species are endemic
+  2. rescaling visualization gradients and clipping away of bathymetric ocean data
+  
+Addressing these concerns resulted in the map figure above, from which all environmental data were derived.
 
-#now do it in a loop, storing results in a list?
+```{r add elev data to list, cache=TRUE, message=F, echo=F}
+#store results in a list
 leio_elev <- list()
 
 for(b in seq_along(leiodist)){
   #populate with all values of elevation per species
-  leio_elev[[b]] <- na.exclude(getValues(crop(comb_carib, readOGR(leiodist[b]))))
+  leio_elev[[b]] <- na.exclude(getValues(crop(comb_carib, readOGR(leiodist[b], verbose = F))))
   
   #add in the names
-  names(leio_elev)[b] <- list.files(path = "./data/distribution/Caribbean_Herp_Data/polygons/Reptiles", pattern = "^Leiocephalus.*\\.shp$", full.names = FALSE)[b]
+  names(leio_elev)[b] <- list.files(path = "./data/distribution/Caribbean_Herp_Data/polygons/Reptiles", pattern = "^Leiocephalus.*\\.shp$", full.names = F)[b]
   names(leio_elev)[b] <- gsub(pattern = ".shp", "", names(leio_elev)[b])
-  
 }
 
 ```
 
-###Write a function to turn the list into a tibble where sublist names are a categorical var for each observation
-```{r list to tibble function}
-
-#list2tibble <- function(...)
-
-#initialize output tibble
-dat.tibble <- tibble(value = NA, category = NA)
-
+```{r list to tibble, echo=F}
+#loop
 for(c in seq_along(leio_elev)){
-  print(c)
-  unlist(leio_elev[[c]]) %>%
-    bind_cols(value = ., category = names(leio_elev)[c])
+  leio_elev[[c]] <- as.vector(leio_elev[[c]]) %>%
+    cbind(elev = ., category = names(leio_elev)[c]) %>%
+    as_tibble(.)
 }
 
+#go from list to single BIG tibble
+leio_elev <- bind_rows(leio_elev)
+
+#coerce elev to numeric
+leio_elev$elev <- as.numeric(leio_elev$elev)
+
+#drop the genus from category name
+leio_elev$category <- leio_elev$category %>%
+  str_replace("Leiocephalus ", "")
+
 ```
 
-##Combine Datasets and Turn Morpho Data into PCA
-```{r pca}
 
-#re-add in IUCN data
-dat.morph <- right_join(leioiucn, dat.morph, by = c("species" = "species"))
-colnames(dat.morph)[1] <- "species"
+##Results
 
-#log transform data and standardize by SVL
-ln.dat.morph <- as.data.frame(log(dat.morph[,-1:-4]))
-ln.dat.morph <- cbind(ln.dat.morph[,1], (ln.dat.morph[,-1] / ln.dat.morph[,1]))
-colnames(ln.dat.morph)[1] <- "1"
+The first task was to explore how elevation differs across *Leiocephalus*. In doing so, we discerned that elevation distributions vary, with several instances of species with long right-tailed distributions, indicating some higher elevation sites within their proposed ranges, however these sites pale in comparison to the area covered by lower elevation sites for these same species. Additionally, the other most common elevation distribution pattern was a rather narrow range that encompasses the entire species range polygon. This variation does suggest that species differ, but further analyses are needed to discern larger patterns from this point.
 
+```{r check the distributions for all species, cache=T, echo=F}
+#plot histograms for all species
+leio_elev %>%
+  left_join(., leioiucn2, by = c("category"="species")) %>%
+ggplot(.) +
+  geom_histogram(aes(x = elev, y = ..density.., fill = redlist), bins = 50) +
+  facet_wrap(~ category, nrow = 6) +
+  ggtitle(str_to_title("Elevation Ranges for Species of Leiocephalus")) +
+    labs(x = "Elevation (m)", y = "Relative Proportion of Elevation Values")
 
-#re-attach the species names
-ln.dat.morph <- dat.morph %>%
-  select(species:redlist) %>%
-  bind_cols(., ln.dat.morph)
+#plot box and whisker for all species
+#leio_elev %>%
+#  left_join(., leioiucn, by = c("category"="species")) %>%
+#ggplot(.) +
+#geom_boxplot(aes(x = category, y = elev))
 
-ln.dat.morph
-
-#actualy PCA function
-mPCA <- ln.dat.morph %>%
-  select(-species:-redlist) %>%
-  prcomp(center = TRUE, scale. = TRUE)
-
-mPCA_tidy <- bind_cols(select(ln.dat.morph, species:redlist), as.data.frame(mPCA$x))
 ```
 
-##Plot Datasets
+Similarly, we evaluated the distance between endpoints in elevation for each species (difference in elevation range). Again, it is clear that species are not homogenous in the elevations they span. While it does not capture the full elevation distribution for each species, elevation difference did seem like an appropriate first comparison.
 
-###Plot PCA Data
-```{r plot pca}
-ggplot(data = mPCA_tidy, mapping = aes(x = PC1, y = PC2)) +
-  geom_point(aes(color = species), show.legend = T)
+
+```{r summarize elev by sp, echo=F}
+leio_elevrangediff <- leio_elev %>%
+  group_by(category) %>%
+  arrange(category) %>%
+  summarise(elev_rangediff = abs(diff(range(elev))))
+  
+
+leio_elevrangediff <- leio_elevrangediff %>%
+  left_join(., leioiucn2, by = c("category" = "species"))
+#switch levels to get in alpha order with coord_flip
+leio_elevrangediff$category <- factor(leio_elevrangediff$category, levels = sort(leio_elevrangediff$category, decreasing = T))
+
+ggplot(data = leio_elevrangediff) +
+  geom_bar(aes(x = category, y = elev_rangediff, fill = redlist), stat = "identity") +
+  coord_flip() +
+  ggtitle(str_to_title("Elevation Difference for Species of Leiocephalus")) +
+    labs(x = "Species (Leiocephalus sp.)", y = "Absolute(Max - Min) Elevation (m)")
+
 ```
+
+We also looked at the morphological diversity of *Leiocephalus*. From the figure below, it is clear that islands (and individual species) show evidence of different levels of morphological diversity, with Hispaniola and Cuba containing the greatest diversity (the former contains almost as much diversity in the first two principal components, or PCs, as the genus does as a whole). The centroid across all species for the first two PCs was plotted as a box with an "X" in the middle, which resides within the Hispaniola polygon.
+
+```{r plot pca, echo=F, warning=F, fig.dim=c(10,8)}
+p <- ggplot(data = mPCA_tidy, mapping = aes(x = PC1, y = PC2)) +
+  geom_point(aes(color = island_bank, shape = redlist), show.legend = T, cex = 2, stroke = 1.25) +
+  geom_point(data = leio_centroid, mapping = aes(x = PC1, y = PC2), pch = 7, cex = 3, stroke = 1.5) +
+  geom_text(aes(label=species), nudge_x = 0.5, nudge_y = 0.25) +
+  guides(cex = F, stroke = F, size = F)
+
+pca.chull <- function(df) df[chull(df$PC1, df$PC2),]
+
+test <- mPCA_tidy %>%
+  mutate(island_bank = str_replace(string = island_bank, pattern = "Bahamas and Cuba", replacement = "Cuba")) %>%
+  plyr::ddply(., "island_bank", pca.chull)
+
+p + geom_polygon(data = test, aes(x = PC1, y = PC2, color = island_bank, fill = island_bank), show.legend = F, alpha = 0.25) +
+  guides(fill = F) +
+  ggtitle(str_to_title("Morphological Principal Components Analysis")) +
+    labs(y = "PC2", x = "PC1")
+
+```
+
+```{r correlations, echo=F, warning=F}
+leio_env_morph <- leio_elevrangediff %>%
+  subset(., .$category %in% leio_dcent$species) %>%
+  left_join(., leio_dcent, by = c("category"="species", "notes", "island_bank", "redlist"))
+
+#shapiro.test(log(leio_env_morph$elev_rangediff, base = 10))
+#shapiro.test(leio_env_morph$distance)
+
+#cor.test(y = leio_env_morph$elev_rangediff, x = leio_env_morph$distance)
+paste0("Pearson Correlation Test for Log-Transformed Whole Dataset")
+cor.test(y = log(leio_env_morph$elev_rangediff, base = 10), x = leio_env_morph$distance)
+
+pp <- ggplot(data = leio_env_morph, aes(y = log(leio_env_morph$elev_rangediff, base = 10), x = distance)) +
+  geom_point(aes(shape = redlist), cex = 2.5) +
+  geom_smooth(aes(y = log(leio_env_morph$elev_rangediff, base = 10), x = distance), method = "lm", color = "black", se = F, fullrange = T) +
+  #geom_text(aes(label=category), position=position_jitter(width = 0, height = 0.12))+
+  ggrepel::geom_text_repel(aes(label=category)) +
+  ggtitle(str_to_title("Distance from Morphological Centroid and Elevation Range\n are Not Significantly Correlated")) +
+  labs(y = "Elevation Range (m)", x = "Distance from Centroid in PC Space") +
+  xlim(-1, 9)
+
+```
+
+```{r TH vs LC correlations, echo=F, warning=F, fig.dim = c(10,7.5)}
+paste0("Pearson Correlation Test for Log-Transformed Least Concern (LC) Dataset")
+leio_env_morph %>%
+  filter(redlist == "LC") %>%
+cor.test(y = log(.$elev_rangediff, base = 10), x = .$distance, alternative = "two.sided", method = "pearson")
+
+paste0("Pearson Correlation Test for Log-Transformed Threatened (TH) Dataset")
+leio_env_morph %>%
+  filter(redlist == "TH") %>%
+cor.test(y = log(.$elev_rangediff, base = 10), x = .$distance, alternative = "two.sided", method = "pearson")
+
+
+pp +
+  geom_smooth(data = filter(leio_env_morph, redlist == "TH"), aes(y = log(elev_rangediff, base = 10), x = distance, color = 'TH'), method = "lm", fullrange = T, se = F, lty = 2) +
+  geom_smooth(data = filter(leio_env_morph, redlist == "LC"), aes(y = log(elev_rangediff, base = 10), x = distance, color = 'LC'), method = "lm", fullrange = T, se = F, lty = 2) +
+  scale_color_manual(values = c('TH' = '#4DAF4A', 'LC' = '#377EB8'), name = "redlist_partition")
+
+```
+Comparison of all available species for log-transformed elevation difference and distance from the morphological PCA centroid does not indicate any strong relationship between the environmental and morphological variables. The best fit linear model indicated a slight positive relationship but was not significant (*p-value* > 0.25). It appears that 3--4 species in the upper right quadrant are contributing to a positive relationship that might otherwise be negative or bear no significant relationship. It is worth noting that while log-transformation improves the strength of the correlation between elevation difference and distance from the centroid, neither the transformed nor untransformed variables have a significant relationship.
+
+For all analyzed data partitions, the best fit linear model for the relationship between elevation range and distance from morphological PCA centroid is positive but nonsignificant. The positive relationship was stronger for least concern (LC) species as compared to threatened (TH) species. Nevertheless, these data suggest that elevation range is not a predictor of morphological uniqueness (as measured in this study) for *Leiocephalus*.
+
+##Main Conclusions
+While species of *Leiocephalus* differ from one another in morphology and elevation range distributions, no significant relationship between the two variables was recovered. This suggests that elevation range is not a good predictor of morphological uniqueness for curly-tailed lizards. The nonsignificant positive relationship runs contrary to the expectation that species with unique morphologies are habitat specialists and are found across a small range of elevations. However, elevation range may not be an appropriate measurement of habitat specialization (even if another measure of elevation is), so the specialist-morphological uniqueness relationship cannot be ruled out yet. A key next step should be to assess how other environmental variables relate to morphological uniqueness. 
+
+In light of conservation status, the elevation range-morphological uniqueness relationship does differ between LC and TH species, but neither are significant on their own. Thus, it cannot be ruled out that there is no difference in the strength of relationship for *Leiocephalus* in different IUCN categories. This result reinforces the sentiment that further work must be done to uncover the factors that best explain why threatened species face greater extinction risk as compared to their least concern congeners.
+
+
+##References 
+
+Barnosky, A.D., Matzke, N., Tomiya, S., Wogan, G.O.U., Swartz, B., Quental, T.B., Marshall, C., McGuire, J.L., Lindsey, E.L., Maguire, K.C., Mersey, B., & Ferrer, E.A. (2011) Has the Earth’s sixth mass extinction already arrived? Nature, 471, 51–57.
+
+Bochaton, C., Bailon, S., Herrel, A., Grouard, S., Ineich, I., Tresset, A., & Cornette, R. (2017) Human impacts reduce morphological diversity in an insular species of lizard. Proceedings of the Royal Society B: Biological Sciences, 284, 20170921.
+
+Dirzo, R., Young, H.S., Galetti, M., Ceballos, G., Isaac, N.J.B., & Collen, B. (2014) Defaunation in the Anthropocene. Science, 345, 401–406.
+
+IUCN (2017) The IUCN Red List of threatened species, Version 2017.1. Available at: [http://www.iucnredlist.org](http://www.iucnredlist.org).
+
+Jarvis, A., Reuter, H.I., Nelson, A., & Guervara, E. (2008) Hole-filled  seamless SRTM data V4. Available at: [http://srtm.csi.cgiar.org](http://srtm.csi.cgiar.org).
+
+Kemp Melissa E. & Hadly Elizabeth A. (2015) Extinction biases in Quaternary Caribbean lizards. Global Ecology and Biogeography, 24, 1281–1289.
+
+Loreau, M. (2000) Biodiversity and Ecosystem Functioning: Recent Theoretical Advances. Oikos, 91, 3–17.
+
+Petchey, O.L. & Gaston, K.J. (2006) Functional diversity: back to basics and looking forward. Ecology Letters, 9, 741–758.
