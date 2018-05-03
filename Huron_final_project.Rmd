@@ -11,18 +11,16 @@ fig.width: 8
 options(width = 500)
 ```
 
+![An individual of *Leiocephalus psammodromus* displays the tail-curling behavior that gives rise to the common name of this genus. This smaller-bodied species is especially threatened according to IUCN criteria.](psammodromus.jpeg){ width=50% }
+
 ##Aim
 The earth is experiencing an ongoing mass extinction event, in which anthropogenic activities have been implicated as a causative factor (Barnosky et al. 2011; Dirzo et al. 2014; Bochaton et al. 2017). In the current mass extinction, loss of functional diversity (FD), or the variety of unique ecosystem roles held by species, is of primary concern (Petchey & Gaston 2006). Because traits mediate ecological interactions (and thus ecological roles), if organisms with uncommon traits go extinct, loss of unique interactions could follow (Loreau 2000; Dirzo et al. 2014). For example, large-bodied species are extinction-prone (especially reptiles, Kemp & Hadly 2015), and their loss catalyzes cascading effects on ecosystems (Dirzo et al. 2014). Morphological traits and FD also indicate environmental limitations for species, which may become exacerbated under climate change. Here, we investigate the relationship between morphological uniqueness and environmental variability of lizards in the genus *Leiocephalus* to better understand how present and future FD of this genus may be shaped by it, thereby informing conservation.
 
-##Question and Problem (need to edit)
+##Question and Problem
  We ask if environmental variability is strongly correlated with morphological uniqueness for *Leiocephalus*. Additionally, we ask if the strength of this relationship differs for least concern and all threatened species based on International Union for Conservation of Nature (IUCN) categories.
 
 ##Location and Grain
 The Caribbean islands. Spatial data consist of proposed species distribution polygons (no specific grain size but do not stretch more than a few islands) and the Shuttle Ray Topography Mission (SRTM) 3 arc-second elevation dataset (available at [http://srtm.csi.cgiar.org/](http://srtm.csi.cgiar.org/)). 
-
-
-
-![An individual of *Leiocephalus psammodromus* displays the tail-curling behavior that gives rise to the common name of this genus. This smaller-bodied species is especially threatened according to IUCN criteria.](/Volumes/GoogleDrive/My Drive/G_Huron_Nicholas_A_UPLOAD/psammodromus.jpeg){ width=50% }
 
 ##Methods
 We collected measurements for 24 continuous phenotypic traits for extinct and extant lizards and extracted topographic data from SRTM dataset (Javis et al. 2008) for focal islands based on expert range polygons (Hedges, personal communication). Conservation status for present and future species richness was obtained from the IUCN Redlist online database (IUCN 2017). To reduce the high dimensionality of the morphological data, we conducted a principal components analysis. For evaluation of environmental and morphological covariance, we retained the most significant principal components and calculate the centroid of all species and calculated the distance between each species and the centroid. This distance from the centroid was used to measure morphological uniqueness and was regressed against species elevation ranges. This relationship was also evaluated for the least concern and threatened species subsets. 
@@ -392,7 +390,7 @@ pp <- ggplot(data = leio_env_morph, aes(y = log(leio_env_morph$elev_rangediff, b
   #geom_text(aes(label=category), position=position_jitter(width = 0, height = 0.12))+
   ggrepel::geom_text_repel(aes(label=category)) +
   ggtitle(str_to_title("Distance from Morphological Centroid and Elevation Range\n are Not Significantly Correlated")) +
-  labs(y = "Elevation Range (m)", x = "Distance from Centroid in PC Space") +
+  labs(y = "Elevation Range (ln(m))", x = "Distance from Centroid in PC Space") +
   xlim(-1, 9)
 
 ```
